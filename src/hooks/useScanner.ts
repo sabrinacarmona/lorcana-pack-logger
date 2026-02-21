@@ -1,19 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Card, ScannerState } from '../types'
 import { recognizeFromCanvas, terminateWorker } from '../utils/ocr-worker'
-import { parseCollectorNumber } from '../utils/collector-number-parser'
+import { matchCardByName } from '../utils/card-name-matcher'
 
 /** How often to capture a frame and run OCR (ms). */
 const FRAME_INTERVAL = 500
 
-/** How long to prevent re-scanning the same collector number (ms). */
+/** How long to prevent re-scanning the same card (ms). */
 const COOLDOWN_MS = 2000
 
 /** How long to show the "matched" state before resuming scanning (ms). */
 const MATCH_DISPLAY_MS = 1500
 
-/** Minimum OCR confidence (0-100) required to accept a result. */
-const MIN_CONFIDENCE = 60
+/** Minimum OCR confidence (0-100) required to attempt name matching. */
+const MIN_CONFIDENCE = 50
 
 interface UseScannerOptions {
   cards: Card[]
@@ -25,22 +25,21 @@ export interface UseScannerReturn {
   scannerActive: boolean
   scannerState: ScannerState
   lastMatch: Card | null
+  candidates: Card[]
   error: string | null
   videoRef: React.RefObject<HTMLVideoElement | null>
   scanCount: number
-  debugText: string
   openScanner: () => void
   closeScanner: () => void
-  confirmMatch: () => void
-  rejectMatch: () => void
+  selectCandidate: (card: Card) => void
 }
 
 export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOptions): UseScannerReturn {
   const [scannerState, setScannerState] = useState<ScannerState>('idle')
   const [lastMatch, setLastMatch] = useState<Card | null>(null)
+  const [candidates, setCandidates] = useState<Card[]>([])
   const [error, setError] = useState<string | null>(null)
   const [scanCount, setScanCount] = useState(0)
-  const [debugText, setDebugText] = useState('')
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -57,18 +56,12 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   setFilterRef.current = setFilter
   const onCardMatchedRef = useRef(onCardMatched)
   onCardMatchedRef.current = onCardMatched
-  const scannerStateRef = useRef(scannerState)
-  scannerStateRef.current = scannerState
 
-  const pauseScanning = useCallback(() => {
+  const stopStream = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
-  }, [])
-
-  const stopStream = useCallback(() => {
-    pauseScanning()
     if (matchTimeoutRef.current) {
       clearTimeout(matchTimeoutRef.current)
       matchTimeoutRef.current = null
@@ -81,44 +74,14 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       videoRef.current.srcObject = null
     }
     processingRef.current = false
-  }, [pauseScanning])
-
-  const matchCard = useCallback((cn: string): Card | null => {
-    const currentCards = cardsRef.current
-    const filter = setFilterRef.current
-
-    const candidates = filter === 'all'
-      ? currentCards.filter((c) => c.cn === cn)
-      : currentCards.filter((c) => c.cn === cn && c.setCode === filter)
-
-    if (candidates.length === 0) return null
-    if (candidates.length === 1) return candidates[0] ?? null
-
-    // Multiple matches — prefer the highest set code (most recent set)
-    return candidates.reduce<Card | null>((best, c) => {
-      if (!best) return c
-      const bestNum = parseInt(best.setCode, 10)
-      const cNum = parseInt(c.setCode, 10)
-      if (!isNaN(cNum) && !isNaN(bestNum) && cNum > bestNum) return c
-      return best
-    }, null)
   }, [])
 
-  // Reference to processFrame for use in resumeScanning
-  const processFrameRef = useRef<() => void>(() => {})
-
-  const resumeScanning = useCallback(() => {
-    if (intervalRef.current) return // Already running
-    intervalRef.current = setInterval(() => {
-      processFrameRef.current()
-    }, FRAME_INTERVAL)
-  }, [])
-
-  const confirmMatch = useCallback(() => {
-    const card = lastMatch
-    if (!card) return
-
-    cooldownRef.current.set(card.cn, Date.now())
+  /** Accept a card as the final match (used for both auto-match and disambiguation). */
+  const acceptMatch = useCallback((card: Card) => {
+    const key = `${card.setCode}-${card.cn}`
+    cooldownRef.current.set(key, Date.now())
+    setLastMatch(card)
+    setCandidates([])
     setScannerState('matched')
     setScanCount((c) => c + 1)
     onCardMatchedRef.current(card)
@@ -127,24 +90,19 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     matchTimeoutRef.current = setTimeout(() => {
       setScannerState('streaming')
       setLastMatch(null)
-      resumeScanning()
     }, MATCH_DISPLAY_MS)
-  }, [lastMatch, resumeScanning])
+  }, [])
 
-  const rejectMatch = useCallback(() => {
-    // Put the rejected CN on a short cooldown so we don't immediately re-detect it
-    if (lastMatch) {
-      cooldownRef.current.set(lastMatch.cn, Date.now())
-    }
-    setLastMatch(null)
-    setScannerState('streaming')
-    resumeScanning()
-  }, [lastMatch, resumeScanning])
+  /** User taps a candidate during disambiguation. */
+  const selectCandidate = useCallback((card: Card) => {
+    acceptMatch(card)
+  }, [acceptMatch])
 
   const processFrame = useCallback(async () => {
     if (processingRef.current) return
-    if (scannerStateRef.current === 'confirming' || scannerStateRef.current === 'matched') return
     if (!videoRef.current || videoRef.current.readyState < 2) return
+    // Don't process frames while user is picking a candidate
+    if (scannerState === 'disambiguating') return
 
     const video = videoRef.current
     if (!canvasRef.current) {
@@ -152,63 +110,63 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     }
     const canvas = canvasRef.current
 
-    // Crop to bottom-left quadrant — collector number is printed small at the
-    // bottom-left of the card.  A tighter crop gives Tesseract more pixels on
-    // the target and less noise from artwork / flavour text.
-    const cropTop = Math.floor(video.videoHeight * 0.75)
-    const cropHeight = video.videoHeight - cropTop
-    const cropWidth = Math.floor(video.videoWidth * 0.5)
+    // Crop to center-upper band where the card name is printed.
+    // The name banner sits roughly at 15-35% from the top of the card,
+    // spanning most of the card width.
+    const cropTop = Math.floor(video.videoHeight * 0.15)
+    const cropHeight = Math.floor(video.videoHeight * 0.20)
+    const cropLeft = Math.floor(video.videoWidth * 0.10)
+    const cropWidth = Math.floor(video.videoWidth * 0.80)
     canvas.width = cropWidth
     canvas.height = cropHeight
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Draw cropped region with aggressive contrast boost for small text
-    ctx.filter = 'grayscale(1) contrast(2.2) brightness(1.4)'
-    ctx.drawImage(video, 0, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
+    // Contrast boost for text on the coloured ink banner
+    ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.2)'
+    ctx.drawImage(video, cropLeft, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
     ctx.filter = 'none'
 
     processingRef.current = true
     try {
       const { text, confidence } = await recognizeFromCanvas(canvas)
 
-      // Reject low-confidence reads — they produce garbage like single digits
+      // Reject low-confidence reads
       if (confidence < MIN_CONFIDENCE) return
+      if (text.length < 2) return
 
-      const parsed = parseCollectorNumber(text)
+      const result = matchCardByName(
+        text,
+        cardsRef.current,
+        setFilterRef.current,
+      )
 
-      if (parsed) {
-        // Check cooldown
+      if (result.card) {
+        // Clear auto-match — check cooldown
+        const key = `${result.card.setCode}-${result.card.cn}`
         const now = Date.now()
-        const lastSeen = cooldownRef.current.get(parsed.cn) ?? 0
-        if (now - lastSeen < COOLDOWN_MS) {
-          return // Still in cooldown for this CN
-        }
+        const lastSeen = cooldownRef.current.get(key) ?? 0
+        if (now - lastSeen < COOLDOWN_MS) return
 
-        const card = matchCard(parsed.cn)
-        if (card) {
-          // Pause scanning and ask user to confirm
-          pauseScanning()
-          setLastMatch(card)
-          setScannerState('confirming')
-        }
+        acceptMatch(result.card)
+      } else if (result.candidates.length > 1) {
+        // Ambiguous match — show disambiguation picker
+        setCandidates(result.candidates)
+        setScannerState('disambiguating')
       }
     } catch {
       // OCR error on this frame — silently skip and try next
     } finally {
       processingRef.current = false
     }
-  }, [matchCard, pauseScanning])
-
-  // Keep processFrameRef in sync
-  processFrameRef.current = processFrame
+  }, [acceptMatch, scannerState])
 
   const openScanner = useCallback(async () => {
     setError(null)
     setLastMatch(null)
+    setCandidates([])
     setScanCount(0)
-    setDebugText('')
     cooldownRef.current.clear()
     setScannerState('requesting')
 
@@ -232,7 +190,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
 
       // Start the frame capture loop
       intervalRef.current = setInterval(() => {
-        processFrameRef.current()
+        processFrame()
       }, FRAME_INTERVAL)
     } catch (err) {
       let message = 'Could not access camera. Please try again.'
@@ -258,8 +216,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     stopStream()
     setScannerState('idle')
     setLastMatch(null)
+    setCandidates([])
     setError(null)
-    setDebugText('')
     processingRef.current = false
   }, [stopStream])
 
@@ -275,13 +233,12 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     scannerActive: scannerState !== 'idle',
     scannerState,
     lastMatch,
+    candidates,
     error,
     videoRef,
     scanCount,
-    debugText,
     openScanner,
     closeScanner,
-    confirmMatch,
-    rejectMatch,
+    selectCandidate,
   }
 }

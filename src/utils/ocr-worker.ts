@@ -16,11 +16,9 @@ async function getWorker(): Promise<Tesseract.Worker> {
     legacyCore: false,
     legacyLang: false,
   }).then(async (worker) => {
-    // Configure for digit-heavy single-line recognition
+    // Configure for card name recognition — block mode handles 1-2 line names
     await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-      // Whitelist digits and common separator characters
-      tessedit_char_whitelist: '0123456789/\\',
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
     })
     workerInstance = worker
     return worker
@@ -36,18 +34,7 @@ export interface OcrResult {
 
 /**
  * Run OCR on a canvas element and return the recognised text with confidence.
- * The canvas should contain a cropped, preprocessed image of the
- * area where the collector number is expected.
- */
-export interface OcrResult {
-  text: string
-  confidence: number
-}
-
-/**
- * Run OCR on a canvas element and return the recognised text with confidence.
- * The canvas should contain a cropped, preprocessed image of the
- * area where the collector number is expected.
+ * The canvas should contain a cropped, preprocessed image of the card name area.
  */
 export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<OcrResult> {
   const worker = await getWorker()
