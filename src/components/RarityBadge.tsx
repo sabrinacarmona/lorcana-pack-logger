@@ -5,120 +5,113 @@ interface RarityBadgeProps {
   rarity: string;
 }
 
+/**
+ * Every rarity gets a pill badge — consistent structure, varying intensity.
+ * Common/Uncommon: low-key.  Rare: ink-sapphire.  SR+: glow treatment.
+ */
 export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
   const rarityKey = rarity === 'Super_rare' ? 'Super Rare' : rarity;
-  const colour = RARITY_COLOURS[rarityKey as keyof typeof RARITY_COLOURS] || '#999';
+  const colour = RARITY_COLOURS[rarityKey as keyof typeof RARITY_COLOURS] || '#5A6A7A';
   const displayName =
-    rarity === 'Super_rare' ? 'Super Rare' : rarity === 'Rare' ? 'Rare' : rarity;
+    rarity === 'Super_rare' ? 'Super Rare' : rarity;
 
-  // Enchanted: prismatic animated background with glow
+  // Shared base for every tier
+  const base: React.CSSProperties = {
+    fontSize: 9,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 4,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    display: 'inline-block',
+    lineHeight: '14px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  };
+
+  // --- Enchanted: prismatic ---
   if (rarity === 'Enchanted') {
     return (
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          padding: '3px 8px',
-          borderRadius: 'var(--radius-sm)',
-          background: 'linear-gradient(90deg, #BF5AF2 0%, #5AC8FA 25%, #34C759 50%, #FFD60A 75%, #BF5AF2 100%)',
-          backgroundSize: '200% 100%',
-          animation: 'prismaticShimmer 4s linear infinite',
-          color: '#fff',
-          letterSpacing: '0.05em',
-          textShadow: '0 0 2px rgba(0, 0, 0, 0.4)',
-          textTransform: 'uppercase',
-          display: 'inline-block',
-          boxShadow: '0 0 8px rgba(191,90,242,0.4), 0 0 16px rgba(90,200,250,0.2)',
-        }}
-      >
+      <span style={{
+        ...base,
+        background: 'linear-gradient(90deg, #BF5AF2 0%, #5AC8FA 25%, #34C759 50%, #FFD60A 75%, #BF5AF2 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'prismaticShimmer 4s linear infinite',
+        color: '#fff',
+        textShadow: '0 0 2px rgba(0,0,0,0.4)',
+        boxShadow: '0 0 6px rgba(191,90,242,0.35), 0 0 14px rgba(90,200,250,0.15)',
+      }}>
         {displayName}
       </span>
     );
   }
 
-  // Legendary: gold chip with warm glow
+  // --- Legendary: amber glow ---
   if (rarity === 'Legendary') {
     return (
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          padding: '3px 8px',
-          borderRadius: 'var(--radius-sm)',
-          background: 'linear-gradient(135deg, #FFD60A, #FFA500)',
-          color: '#000',
-          letterSpacing: '0.05em',
-          textShadow: '0 1px 2px rgba(255, 255, 255, 0.3)',
-          textTransform: 'uppercase',
-          display: 'inline-block',
-          boxShadow: '0 0 8px rgba(255,214,10,0.5), 0 0 20px rgba(255,214,10,0.15)',
-        }}
-      >
+      <span style={{
+        ...base,
+        background: 'linear-gradient(135deg, #E89C24, #FFD60A)',
+        color: '#0A1628',
+        textShadow: '0 1px 1px rgba(255,255,255,0.25)',
+        boxShadow: '0 0 6px rgba(232,156,36,0.45), 0 0 16px rgba(232,156,36,0.12)',
+      }}>
         {displayName}
       </span>
     );
   }
 
-  // Super Rare: blue chip with cool glow
+  // --- Super Rare: cool blue glow ---
   if (rarity === 'Super Rare' || rarity === 'Super_rare') {
     return (
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          padding: '3px 8px',
-          borderRadius: 'var(--radius-sm)',
-          background: 'linear-gradient(135deg, #64D2FF, #38B6FF)',
-          color: '#000',
-          letterSpacing: '0.05em',
-          textShadow: '0 1px 2px rgba(255, 255, 255, 0.3)',
-          textTransform: 'uppercase',
-          display: 'inline-block',
-          boxShadow: '0 0 8px rgba(100,210,255,0.4), 0 0 16px rgba(100,210,255,0.15)',
-        }}
-      >
+      <span style={{
+        ...base,
+        background: 'linear-gradient(135deg, #64D2FF, #38B6FF)',
+        color: '#0A1628',
+        textShadow: '0 1px 1px rgba(255,255,255,0.25)',
+        boxShadow: '0 0 6px rgba(100,210,255,0.35), 0 0 14px rgba(100,210,255,0.1)',
+      }}>
         {displayName}
       </span>
     );
   }
 
-  // Rare: stronger tinted chip
+  // --- Rare: sapphire pill with border ---
   if (rarity === 'Rare') {
     return (
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          padding: '3px 8px',
-          borderRadius: 'var(--radius-sm)',
-          background: `${colour}30`,
-          color: colour,
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-          display: 'inline-block',
-          border: `1px solid ${colour}40`,
-        }}
-      >
+      <span style={{
+        ...base,
+        background: 'rgba(37,99,235,0.15)',
+        color: '#5AC8FA',
+        border: '1px solid rgba(37,99,235,0.3)',
+      }}>
         {displayName}
       </span>
     );
   }
 
-  // Default (Common, Uncommon): subtle styling
+  // --- Uncommon: steel outline pill ---
+  if (rarity === 'Uncommon') {
+    return (
+      <span style={{
+        ...base,
+        background: 'rgba(107,114,128,0.1)',
+        color: '#8E9BAE',
+        border: '1px solid rgba(107,114,128,0.2)',
+      }}>
+        {displayName}
+      </span>
+    );
+  }
+
+  // --- Common: lowest contrast, still a pill ---
   return (
-    <span
-      style={{
-        fontSize: 10,
-        fontWeight: 600,
-        padding: '3px 8px',
-        borderRadius: 'var(--radius-sm)',
-        background: `${colour}18`,
-        color: colour,
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase',
-        display: 'inline-block',
-      }}
-    >
+    <span style={{
+      ...base,
+      background: 'rgba(90,106,122,0.08)',
+      color: '#6B7280',
+      border: '1px solid rgba(90,106,122,0.12)',
+    }}>
       {displayName}
     </span>
   );
