@@ -7,6 +7,7 @@ import { InkDot } from './InkDot';
 import { RarityBadge } from './RarityBadge';
 import { PackDivider } from './PackDivider';
 import { ScannerOverlay } from './ScannerOverlay';
+import { SetFilterDropdown } from './SetFilterDropdown';
 
 interface SearchViewProps {
   search: string;
@@ -86,19 +87,6 @@ export const SearchView: React.FC<SearchViewProps> = ({
   onCloseScanner,
   onSelectCandidate,
 }) => {
-  // Generate set options
-  const setOptions = useMemo(() => {
-    const options = [<option key="all" value="all">All Sets</option>];
-    Object.keys(setMap).forEach((code) => {
-      options.push(
-        <option key={code} value={code}>
-          {setMap[code]}
-        </option>
-      );
-    });
-    return options;
-  }, [setMap]);
-
   // Group pulls by set
   const groupedPulls = useMemo(() => {
     const groups: Record<string, Pull[]> = {};
@@ -532,62 +520,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
         {/* Search section */}
         <div style={{ marginBottom: 24 }}>
           {/* Set filter */}
-          <div style={{ position: 'relative', marginBottom: 10 }}>
-            <select
-              className="set-filter-select"
-              style={{
-                width: '100%',
-                padding: '10px 40px 10px 14px',
-                background: '#111827',
-                border: '1px solid #1A2540',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                fontSize: 14,
-                fontFamily: "'Outfit', sans-serif",
-                cursor: 'pointer',
-                transition: 'border-color 200ms ease, box-shadow 300ms ease',
-              }}
-              value={setFilter}
-              onChange={(ev) => onSetFilterChange(ev.target.value)}
-            >
-              {setOptions}
-            </select>
-            {/* Custom chevron */}
-            <svg
-              style={{
-                position: 'absolute',
-                right: 14,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: 14,
-                height: 14,
-                color: 'var(--text-secondary)',
-                pointerEvents: 'none',
-              }}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-            {setFilter !== 'all' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 12,
-                  right: 12,
-                  height: 2,
-                  background: setColours[setFilter] || 'var(--accent)',
-                  borderRadius: 1,
-                  transition: 'background 200ms ease',
-                }}
-              />
-            )}
-          </div>
+          <SetFilterDropdown
+            value={setFilter}
+            onChange={onSetFilterChange}
+            setMap={setMap}
+            setColours={setColours}
+          />
 
           {/* Search input + camera button row */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
