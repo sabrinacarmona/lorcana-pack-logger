@@ -267,7 +267,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
             fontWeight: 600,
             color: 'var(--text-tertiary)',
             textTransform: 'uppercase',
-            letterSpacing: '0.02em',
+            letterSpacing: '0.06em',
+            fontFamily: "'Playfair Display', serif",
             padding: '4px 0 6px',
             borderBottom: '1px solid var(--border)',
             marginBottom: 4,
@@ -570,7 +571,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   color: 'var(--text-primary)',
                   fontSize: 16,
                   fontFamily: "'Outfit', sans-serif",
-                  transition: 'border-color 200ms cubic-bezier(0.25, 0.1, 0.25, 1.0)',
+                  transition: 'border-color 200ms ease, box-shadow 300ms ease',
+                  boxShadow: '0 0 0 0 transparent',
                 }}
                 type="text"
                 placeholder="Search cards..."
@@ -728,6 +730,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 fontSize: 16,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
+                fontFamily: "'Playfair Display', serif",
+                letterSpacing: '0.01em',
               }}
             >
               Session Pulls
@@ -806,29 +810,73 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
           {/* Empty state or pulls list */}
           {totalCards === 0 ? (
-            <div style={{ textAlign: 'center', padding: '56px 20px' }}>
+            <div style={{
+              textAlign: 'center',
+              padding: '64px 20px',
+              position: 'relative',
+              minHeight: 320,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {/* Ink swirl motif — concentric arcs referencing the Lorcana card back */}
+              <svg
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  width: 300,
+                  height: 300,
+                  marginTop: -150,
+                  marginLeft: -150,
+                  animation: 'inkBreath 8s ease-in-out infinite',
+                  pointerEvents: 'none',
+                }}
+                viewBox="0 0 200 200"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <g stroke="var(--accent)" strokeLinecap="round">
+                  {/* Outer sweep — right */}
+                  <path d="M100 20 C145 20, 180 55, 180 100 C180 145, 150 172, 115 178" strokeWidth="1.2" opacity="0.7" />
+                  {/* Outer sweep — left */}
+                  <path d="M65 28 C35 50, 22 85, 28 120 C34 152, 55 172, 85 178" strokeWidth="1.8" opacity="0.5" />
+                  {/* Mid sweep — right */}
+                  <path d="M135 42 C162 65, 165 105, 148 138 C136 158, 115 168, 95 165" strokeWidth="1" opacity="0.6" />
+                  {/* Inner spiral — core */}
+                  <path d="M90 60 C112 58, 135 75, 138 100 C140 125, 122 145, 100 148 C78 150, 60 135, 58 112 C56 95, 68 78, 85 72" strokeWidth="1.5" opacity="0.8" />
+                  {/* Lower-left wisp */}
+                  <path d="M45 80 C35 105, 38 140, 58 162" strokeWidth="1" opacity="0.4" />
+                  {/* Upper accent */}
+                  <path d="M78 35 C92 28, 118 32, 135 48" strokeWidth="1.3" opacity="0.5" />
+                  {/* Lower-right wisp */}
+                  <path d="M125 155 C145 142, 160 118, 158 92" strokeWidth="0.8" opacity="0.3" />
+                </g>
+              </svg>
               <p
                 style={{
-                  color: 'var(--text-secondary)',
-                  fontSize: 17,
+                  position: 'relative',
+                  fontFamily: "'Playfair Display', serif",
+                  color: 'rgba(245, 166, 35, 0.7)',
+                  fontSize: 22,
                   fontWeight: 500,
-                  marginBottom: 8,
-                  letterSpacing: '-0.01em',
+                  marginBottom: 12,
+                  letterSpacing: '0.02em',
                 }}
               >
-                Search for a card to begin
+                The Inkwell Awaits
               </p>
               <p
                 style={{
-                  color: 'var(--text-tertiary)',
+                  position: 'relative',
+                  color: '#8E9BAE',
                   fontSize: 13,
                   lineHeight: 1.6,
-                  maxWidth: 280,
-                  margin: '0 auto',
+                  maxWidth: 300,
                 }}
               >
-                Set your ink filter, or just start typing. Cards are added to your session as you
-                go.
+                Search for a card to begin your session — or scan one to let the ink reveal it.
               </p>
             </div>
           ) : (

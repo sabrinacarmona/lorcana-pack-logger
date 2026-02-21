@@ -147,17 +147,22 @@ export const Header: React.FC<HeaderProps> = ({
               minWidth: 0,
               maxWidth: 320,
               textOverflow: 'ellipsis',
-              transition: 'border-color 200ms ease',
+              transition: 'border-color 200ms ease, box-shadow 300ms ease',
+              boxShadow: '0 0 0 0 transparent',
             }}
             type="text"
             value={sessionName}
             placeholder="Name this session…"
             onChange={(ev) => onSessionNameChange(ev.target.value)}
             onFocus={(ev) => {
-              (ev.target as HTMLInputElement).style.borderColor = 'var(--accent)';
+              const el = ev.target as HTMLInputElement;
+              el.style.borderColor = 'var(--accent)';
+              el.style.boxShadow = '0 0 0 1px rgba(245,166,35,0.3), 0 0 12px rgba(245,166,35,0.08)';
             }}
             onBlur={(ev) => {
-              (ev.target as HTMLInputElement).style.borderColor = 'transparent';
+              const el = ev.target as HTMLInputElement;
+              el.style.borderColor = 'transparent';
+              el.style.boxShadow = '0 0 0 0 transparent';
             }}
           />
           {savedIndicator && (

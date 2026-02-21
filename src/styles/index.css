@@ -68,9 +68,23 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 @keyframes scannerGuidePulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
 @keyframes scannerMatchFlash { 0% { filter: brightness(1); } 30% { filter: brightness(1.6); } 100% { filter: brightness(1); } }
 @keyframes scannerCardBanner { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes inkBreath {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.08; }
+  50% { transform: scale(1.03) rotate(3deg); opacity: 0.12; }
+}
 
 /* === Interactive element transitions === */
-.search-input:focus { border-color: var(--accent) !important; }
+.search-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent),
+              0 0 16px rgba(245,166,35,0.12),
+              0 0 32px rgba(245,166,35,0.06) !important;
+}
+.session-name-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px rgba(245,166,35,0.3),
+              0 0 12px rgba(245,166,35,0.08) !important;
+}
 .result-item { transition: background var(--transition-standard); }
 .result-item:hover { background: var(--accent-subtle) !important; }
 .add-btn { transition: background var(--transition-standard), color var(--transition-standard), transform var(--transition-quick); }
