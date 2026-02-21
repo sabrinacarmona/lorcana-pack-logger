@@ -6,27 +6,25 @@ import { InkDot } from './InkDot'
 interface ScannerOverlayProps {
   scannerState: ScannerState
   lastMatch: Card | null
+  candidates: Card[]
   error: string | null
   scanCount: number
-  debugText: string
   videoRef: React.RefObject<HTMLVideoElement | null>
   onClose: () => void
   onRetry: () => void
-  onConfirm: () => void
-  onReject: () => void
+  onSelectCandidate: (card: Card) => void
 }
 
 export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   scannerState,
   lastMatch,
+  candidates,
   error,
   scanCount,
-  debugText,
   videoRef,
   onClose,
   onRetry,
-  onConfirm,
-  onReject,
+  onSelectCandidate,
 }) => {
   const [showHint, setShowHint] = useState(false)
 
@@ -41,10 +39,10 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   }, [scannerState, scanCount])
 
   const isMatched = scannerState === 'matched'
-  const isConfirming = scannerState === 'confirming'
+  const isDisambiguating = scannerState === 'disambiguating'
   const guideColor = isMatched
     ? 'var(--success)'
-    : isConfirming
+    : isDisambiguating
       ? 'var(--accent)'
       : 'var(--accent)'
 
@@ -144,41 +142,14 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </button>
         </div>
 
-        {/* Debug text showing OCR output */}
-        {debugText && (scannerState === 'streaming' || scannerState === 'processing') && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 'max(56px, calc(env(safe-area-inset-top) + 48px))',
-              left: 16,
-              right: 16,
-              textAlign: 'center',
-              zIndex: 2,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                color: 'rgba(255,255,255,0.5)',
-                fontFamily: 'monospace',
-                background: 'rgba(0,0,0,0.4)',
-                padding: '4px 8px',
-                borderRadius: 4,
-              }}
-            >
-              {debugText}
-            </span>
-          </div>
-        )}
-
-        {/* Guide frame area */}
+        {/* Guide frame — targets center-upper area where the card name is printed */}
         <div
           style={{
             position: 'absolute',
             left: '10%',
             right: '10%',
-            bottom: '20%',
-            height: '12%',
+            top: '15%',
+            height: '20%',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -193,7 +164,9 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               position: 'relative',
               animation: isMatched
                 ? 'scannerMatchFlash 300ms ease-out'
-                : 'scannerGuidePulse 2s ease-in-out infinite',
+                : isDisambiguating
+                  ? undefined
+                  : 'scannerGuidePulse 2s ease-in-out infinite',
             }}
           >
             {/* Corner brackets */}
@@ -255,101 +228,10 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                   animation: 'fadeIn 300ms ease-out',
                 }}
               >
-                Point at the collector number (e.g. 123/204)
+                Scanning...
               </span>
             )}
 
-            {/* Confirmation prompt — user must approve the match */}
-            {isConfirming && lastMatch && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 10,
-                  animation: 'scannerCardBanner 300ms ease-out',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    background: 'rgba(245,166,35,0.2)',
-                    border: '1px solid rgba(245,166,35,0.4)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '8px 14px',
-                  }}
-                >
-                  <InkDot ink={lastMatch.ink} />
-                  <span
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: '#fff',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    {lastMatch.display}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: 'rgba(255,255,255,0.6)',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    #{lastMatch.cn}
-                  </span>
-                  <RarityBadge rarity={lastMatch.rarity} />
-                </div>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: 'rgba(255,255,255,0.7)',
-                    fontFamily: "'Outfit', sans-serif",
-                  }}
-                >
-                  Is this the right card?
-                </span>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    onClick={onReject}
-                    style={{
-                      padding: '10px 28px',
-                      background: 'rgba(255,255,255,0.15)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: 'var(--radius-md)',
-                      color: '#fff',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    No
-                  </button>
-                  <button
-                    onClick={onConfirm}
-                    style={{
-                      padding: '10px 28px',
-                      background: 'var(--success)',
-                      border: 'none',
-                      borderRadius: 'var(--radius-md)',
-                      color: '#fff',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    Yes
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Successfully added */}
             {isMatched && lastMatch && (
               <div
                 style={{
@@ -405,6 +287,68 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 </span>
               </div>
             )}
+            {isDisambiguating && candidates.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 8,
+                  animation: 'scannerCardBanner 300ms ease-out',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.7)',
+                    fontFamily: "'Outfit', sans-serif",
+                    marginBottom: 4,
+                  }}
+                >
+                  Multiple matches — tap to confirm
+                </span>
+                {candidates.map((card) => (
+                  <button
+                    key={`${card.setCode}-${card.cn}`}
+                    onClick={() => onSelectCandidate(card)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      width: '100%',
+                      background: 'rgba(245,166,35,0.15)',
+                      border: '1px solid rgba(245,166,35,0.3)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '8px 14px',
+                      cursor: 'pointer',
+                      fontFamily: "'Outfit', sans-serif",
+                    }}
+                  >
+                    <InkDot ink={card.ink} />
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: '#fff',
+                        flex: 1,
+                        textAlign: 'left',
+                      }}
+                    >
+                      {card.display}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: 'rgba(255,255,255,0.5)',
+                      }}
+                    >
+                      {card.setName}
+                    </span>
+                    <RarityBadge rarity={card.rarity} />
+                  </button>
+                ))}
+              </div>
+            )}
             {scannerState === 'error' && (
               <div
                 style={{
@@ -458,7 +402,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 animation: 'fadeIn 300ms ease-out',
               }}
             >
-              Try moving closer or improving lighting
+              Center the card name in the frame
             </div>
           )}
         </div>

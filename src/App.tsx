@@ -216,15 +216,14 @@ export function App() {
               scannerActive={scanner.scannerActive}
               scannerState={scanner.scannerState}
               lastMatch={scanner.lastMatch}
+              candidates={scanner.candidates}
               scannerError={scanner.error}
               scanCount={scanner.scanCount}
-              debugText={scanner.debugText}
               videoRef={scanner.videoRef}
               cameraSupported={cameraSupported}
               onOpenScanner={scanner.openScanner}
               onCloseScanner={scanner.closeScanner}
-              onConfirmMatch={scanner.confirmMatch}
-              onRejectMatch={scanner.rejectMatch}
+              onSelectCandidate={scanner.selectCandidate}
             />
             </ErrorBoundary>
           )}
