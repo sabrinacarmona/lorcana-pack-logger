@@ -29,3 +29,4 @@ export type ViewType = 'search' | 'export' | 'history'
 export type ViewDirection = 'left' | 'right'
 export type CardSource = '' | 'cached' | 'updated' | 'offline'
 export type RarityFlashType = 'enchanted' | 'legendary' | 'superrare' | null
+export type ScannerState = 'idle' | 'requesting' | 'streaming' | 'processing' | 'matched' | 'error'

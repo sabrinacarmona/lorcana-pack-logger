@@ -6,4 +6,5 @@ export type {
   ViewDirection,
   CardSource,
   RarityFlashType,
+  ScannerState,
 } from './session'

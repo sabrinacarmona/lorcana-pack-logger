@@ -11,6 +11,7 @@ import { useUndo } from './hooks/useUndo'
 import { useExportHistory } from './hooks/useExportHistory'
 import { useRelativeTime } from './hooks/useRelativeTime'
 import { useSets } from './hooks/useSets'
+import { useScanner } from './hooks/useScanner'
 import { Header } from './components/Header'
 import { SearchView } from './components/SearchView'
 import { ExportView } from './components/ExportView'
@@ -43,6 +44,27 @@ export function App() {
   const undo = useUndo()
   const exportHistory = useExportHistory()
   const relativeTime = useRelativeTime(session.sessionStartedAt)
+
+  // === Camera scanner ===
+  const cameraSupported = typeof navigator !== 'undefined'
+    && typeof navigator.mediaDevices !== 'undefined'
+    && typeof navigator.mediaDevices.getUserMedia === 'function'
+
+  // handleScanMatch is defined after handleAddCard, so we use a ref-based approach
+  // by passing the callback directly — useScanner stores it in a ref internally
+  const scanner = useScanner({
+    cards,
+    setFilter: search.setFilter,
+    onCardMatched: useCallback((card: Card) => {
+      // Ensure session has started
+      session.ensureSessionStarted()
+      const addCount = session.incrementAddCount()
+      const packNumber = Math.ceil(addCount / 12)
+      pulls.addPull(card, 'normal', packNumber)
+      undo.recordAction(card, 'normal')
+      sensory.triggerFeedback(card.rarity)
+    }, [session, pulls, undo, sensory]),
+  })
 
   // === Core actions ===
   const handleAddCard = useCallback(
@@ -191,6 +213,15 @@ export function App() {
               onKeyDown={handleKeyDown}
               inputRef={search.inputRef as React.RefObject<HTMLInputElement>}
               resultsRef={search.resultsRef as React.RefObject<HTMLDivElement>}
+              scannerActive={scanner.scannerActive}
+              scannerState={scanner.scannerState}
+              lastMatch={scanner.lastMatch}
+              scannerError={scanner.error}
+              scanCount={scanner.scanCount}
+              videoRef={scanner.videoRef}
+              cameraSupported={cameraSupported}
+              onOpenScanner={scanner.openScanner}
+              onCloseScanner={scanner.closeScanner}
             />
             </ErrorBoundary>
           )}
