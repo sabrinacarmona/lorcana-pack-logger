@@ -218,10 +218,13 @@ export function App() {
               lastMatch={scanner.lastMatch}
               scannerError={scanner.error}
               scanCount={scanner.scanCount}
+              debugText={scanner.debugText}
               videoRef={scanner.videoRef}
               cameraSupported={cameraSupported}
               onOpenScanner={scanner.openScanner}
               onCloseScanner={scanner.closeScanner}
+              onConfirmMatch={scanner.confirmMatch}
+              onRejectMatch={scanner.rejectMatch}
             />
             </ErrorBoundary>
           )}

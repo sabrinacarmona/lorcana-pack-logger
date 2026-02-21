@@ -29,15 +29,20 @@ async function getWorker(): Promise<Tesseract.Worker> {
   return initPromise
 }
 
+export interface OcrResult {
+  text: string
+  confidence: number
+}
+
 /**
- * Run OCR on a canvas element and return the recognised text.
+ * Run OCR on a canvas element and return the recognised text with confidence.
  * The canvas should contain a cropped, preprocessed image of the
  * area where the collector number is expected.
  */
-export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<string> {
+export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<OcrResult> {
   const worker = await getWorker()
   const { data } = await worker.recognize(canvas)
-  return data.text.trim()
+  return { text: data.text.trim(), confidence: data.confidence }
 }
 
 /**

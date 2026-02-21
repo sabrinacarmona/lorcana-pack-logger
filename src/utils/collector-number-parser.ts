@@ -34,22 +34,11 @@ export function parseCollectorNumber(ocrText: string): ParsedCollectorNumber | n
     }
   }
 
-  // Secondary: standalone number that looks like a collector number (1-3 digits)
-  // Only match if it's reasonably isolated (word boundary or whitespace)
-  const standalonePattern = /\b(\d{1,3})\b/g
-  let best: ParsedCollectorNumber | null = null
-  let match: RegExpExecArray | null
-  while ((match = standalonePattern.exec(cleaned)) !== null) {
-    const cn = match[1] ? normalise(match[1]) : null
-    if (cn) {
-      // Prefer larger numbers (more likely to be a collector number than a cost or other digit)
-      if (!best || cn.length > best.cn.length) {
-        best = { cn, total: null, raw: match[0] }
-      }
-    }
-  }
-
-  return best
+  // Secondary: "123 / 204" with wider spacing or OCR artifacts between them.
+  // We no longer match standalone bare numbers — they cause too many false
+  // positives (ink costs, willpower, etc. get matched as collector numbers).
+  // Only the X/Y format is reliable enough for automatic matching.
+  return null
 }
 
 /** Strip leading zeros and reject "0" */
