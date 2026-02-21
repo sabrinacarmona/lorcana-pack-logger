@@ -6,8 +6,9 @@ interface RarityBadgeProps {
 }
 
 /**
- * Every rarity gets a pill badge — consistent structure, varying intensity.
- * Common/Uncommon: low-key.  Rare: ink-sapphire.  SR+: glow treatment.
+ * Every rarity gets a pill badge — identical outer dimensions, varying intensity.
+ * The base includes a 1px transparent border so bordered and filled pills
+ * have the same box size.
  */
 export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
   const rarityKey = rarity === 'Super_rare' ? 'Super Rare' : rarity;
@@ -15,7 +16,7 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
   const displayName =
     rarity === 'Super_rare' ? 'Super Rare' : rarity;
 
-  // Shared base for every tier
+  // Shared base — every tier gets identical dimensions
   const base: React.CSSProperties = {
     fontSize: 9,
     fontWeight: 700,
@@ -27,6 +28,8 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
     lineHeight: '14px',
     whiteSpace: 'nowrap',
     flexShrink: 0,
+    border: '1px solid transparent',
+    verticalAlign: 'middle',
   };
 
   // --- Enchanted: prismatic ---
@@ -76,28 +79,28 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
     );
   }
 
-  // --- Rare: sapphire pill with border ---
+  // --- Rare: sapphire pill ---
   if (rarity === 'Rare') {
     return (
       <span style={{
         ...base,
         background: 'rgba(37,99,235,0.15)',
         color: '#5AC8FA',
-        border: '1px solid rgba(37,99,235,0.3)',
+        borderColor: 'rgba(37,99,235,0.3)',
       }}>
         {displayName}
       </span>
     );
   }
 
-  // --- Uncommon: steel outline pill, one step above Common ---
+  // --- Uncommon: steel outline pill ---
   if (rarity === 'Uncommon') {
     return (
       <span style={{
         ...base,
         background: 'rgba(107,114,128,0.15)',
         color: '#94A3B5',
-        border: '1px solid rgba(107,114,128,0.28)',
+        borderColor: 'rgba(107,114,128,0.28)',
       }}>
         {displayName}
       </span>
@@ -110,7 +113,7 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
       ...base,
       background: 'rgba(90,106,122,0.15)',
       color: '#7A8694',
-      border: '1px solid rgba(90,106,122,0.25)',
+      borderColor: 'rgba(90,106,122,0.25)',
     }}>
       {displayName}
     </span>

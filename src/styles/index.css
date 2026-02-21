@@ -105,7 +105,12 @@ select option { background: var(--bg-elevated); color: var(--text-primary); }
   .desktop-header-actions { display: none !important; }
   .mobile-bottom-bar { display: flex !important; }
   .search-input { font-size: 18px !important; padding: 16px 40px 16px 44px !important; min-height: 52px !important; }
-  .result-item { padding: 14px 12px !important; min-height: 56px !important; }
+  .result-item {
+    padding: 12px !important; min-height: 56px !important;
+    flex-wrap: wrap !important;
+  }
+  .result-item > div:first-child { flex: 1 1 100% !important; margin-bottom: 8px !important; }
+  .result-item > div:last-child { margin-left: auto !important; }
   .add-btn { min-height: 44px !important; min-width: 48px !important; padding: 8px 14px !important; font-size: 13px !important; }
   .qty-btn { width: 44px !important; height: 44px !important; font-size: 20px !important; border-radius: var(--radius-full) !important; }
   .remove-btn { width: 44px !important; height: 44px !important; font-size: 16px !important; }
