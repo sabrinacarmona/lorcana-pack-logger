@@ -1,8 +1,7 @@
 import type { RawCard } from '../types'
 import { getCachedCards, setCachedCards } from './cache'
 
-const API_BASE = 'https://api.lorcast.com/v0/cards'
-const PER_PAGE = 200
+const API_BASE = 'https://api.lorcast.com/v0'
 const TIMEOUT_MS = 8000
 const MAX_RETRIES = 1
 
@@ -27,46 +26,46 @@ async function fetchWithResilience(url: string, attempt = 0): Promise<Response> 
   }
 }
 
+interface ApiSet {
+  code: string
+  name: string
+}
+
 interface ApiCard {
   name?: string
   version?: string
-  subtitle?: string
-  set?: { id?: string | number; name?: string }
-  set_id?: string | number
-  set_name?: string
+  set?: { code?: string; name?: string }
   collector_number?: string | number
-  number?: string | number
   cost?: number
-  ink_cost?: number
   ink?: string
-  color?: string
   rarity?: string
-  type?: string
-  classifications?: string
+  type?: string | string[]
+  classifications?: string | string[]
 }
 
-interface ApiResponse {
-  results?: ApiCard[]
-  data?: ApiCard[]
-}
+function mapApiCards(cards: ApiCard[]): RawCard[] {
+  return cards.map((c): RawCard => {
+    const typeVal = Array.isArray(c.type) ? c.type.join(' ') : c.type || ''
+    const classVal = Array.isArray(c.classifications) ? c.classifications.join(' ') : c.classifications || ''
+    const combined = [typeVal, classVal].filter(Boolean).join(' ')
 
-function mapApiCards(results: ApiCard[]): RawCard[] {
-  return results.map((c): RawCard => [
-    c.name || '',
-    c.version || c.subtitle || '',
-    String((c.set && c.set.id) || c.set_id || ''),
-    (c.set && c.set.name) || c.set_name || '',
-    String(c.collector_number || c.number || ''),
-    c.cost || c.ink_cost || 0,
-    c.ink || c.color || '',
-    c.rarity || '',
-    c.type || c.classifications || '',
-  ])
+    return [
+      c.name || '',
+      c.version || '',
+      String(c.set?.code || ''),
+      c.set?.name || '',
+      String(c.collector_number || ''),
+      c.cost || 0,
+      c.ink || '',
+      c.rarity || '',
+      combined,
+    ]
+  })
 }
 
 /**
  * Fetches the complete card database from lorcast.com API.
- * Uses localStorage cache (24h) and paginates through all results.
+ * Uses localStorage cache (24h). Fetches all sets, then all cards per set.
  * Returns { data, source } where source indicates freshness.
  */
 export async function fetchCardDatabase(): Promise<{
@@ -79,27 +78,35 @@ export async function fetchCardDatabase(): Promise<{
     return { data: cached, source: 'cached' }
   }
 
-  // Fetch from API with pagination
+  // Fetch set list, then all cards per set
   try {
-    const allCards: RawCard[] = []
-    let page = 1
+    const setsResponse = await fetchWithResilience(`${API_BASE}/sets`)
+    const setsJson = await setsResponse.json()
+    const sets: ApiSet[] = setsJson.results || setsJson || []
 
-    while (true) {
-      const response = await fetchWithResilience(
-        `${API_BASE}?page=${page}&per_page=${PER_PAGE}`,
+    if (!Array.isArray(sets) || sets.length === 0) {
+      return { data: null, source: 'offline' }
+    }
+
+    const allCards: RawCard[] = []
+
+    // Fetch cards for each set concurrently (in batches of 4 to be polite)
+    const BATCH_SIZE = 4
+    for (let i = 0; i < sets.length; i += BATCH_SIZE) {
+      const batch = sets.slice(i, i + BATCH_SIZE)
+      const results = await Promise.allSettled(
+        batch.map(async (set) => {
+          const res = await fetchWithResilience(`${API_BASE}/sets/${set.code}/cards`)
+          const cards: ApiCard[] = await res.json()
+          return Array.isArray(cards) ? mapApiCards(cards) : []
+        }),
       )
 
-      const json: ApiResponse | ApiCard[] = await response.json()
-      const results: ApiCard[] = Array.isArray(json)
-        ? json
-        : json.results || json.data || []
-
-      if (!Array.isArray(results) || results.length === 0) break
-
-      allCards.push(...mapApiCards(results))
-
-      if (results.length < PER_PAGE) break
-      page++
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          allCards.push(...result.value)
+        }
+      }
     }
 
     if (allCards.length > 0) {
