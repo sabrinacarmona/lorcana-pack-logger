@@ -118,7 +118,7 @@ body::after {
 }
 .result-item:last-child::after { display: none; }
 .result-item:hover {
-  background: rgba(245, 166, 35, 0.08) !important;
+  background: rgba(245, 166, 35, 0.12) !important;
   border-left-color: #F5A623 !important;
 }
 
@@ -162,6 +162,17 @@ body::after {
 .export-btn:hover { background: var(--accent-hover) !important; }
 .remove-btn { transition: color var(--transition-standard); }
 .remove-btn:hover { color: var(--danger) !important; }
+/* === Set filter dropdown — custom styling === */
+.set-filter-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.set-filter-select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px rgba(245,166,35,0.3),
+              0 0 12px rgba(245,166,35,0.08) !important;
+}
 select option { background: var(--bg-elevated); color: var(--text-primary); }
 
 /* === Responsive (mobile) === */
