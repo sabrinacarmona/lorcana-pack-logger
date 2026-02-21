@@ -135,9 +135,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
             justifyContent: 'space-between',
             padding: '10px 12px',
             cursor: 'pointer',
-            backgroundImage: idx === selectedIdx
-              ? `linear-gradient(90deg, rgba(245,166,35,0.12) 0%, rgba(245,166,35,0.04) 40%, transparent 70%)`
-              : inkGradientStyle(card.ink, 0.08).backgroundImage || 'none',
+            background: idx === selectedIdx
+              ? 'rgba(245,166,35,0.12)'
+              : 'transparent',
+            backgroundImage: idx !== selectedIdx
+              ? inkGradientStyle(card.ink, 0.08).backgroundImage || 'none'
+              : 'none',
             backgroundRepeat: 'no-repeat',
             borderLeft: idx === selectedIdx ? '3px solid #F5A623' : '3px solid transparent',
             transition: 'border-left-color 150ms ease-out, background 150ms ease',
@@ -207,8 +210,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
                     <span style={{
                       fontFamily: "'Cinzel', serif",
                       fontWeight: 600,
-                      fontSize: 14,
-                      letterSpacing: '0.01em',
+                      fontSize: 13,
+                      letterSpacing: '-0.01em',
                     }}>
                       {card.display}
                     </span>
@@ -534,20 +537,42 @@ export const SearchView: React.FC<SearchViewProps> = ({
               className="set-filter-select"
               style={{
                 width: '100%',
-                padding: '10px 14px',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border)',
+                padding: '10px 40px 10px 14px',
+                background: '#111827',
+                border: '1px solid #1A2540',
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--text-primary)',
                 fontSize: 14,
                 fontFamily: "'Outfit', sans-serif",
                 cursor: 'pointer',
+                transition: 'border-color 200ms ease, box-shadow 300ms ease',
               }}
               value={setFilter}
               onChange={(ev) => onSetFilterChange(ev.target.value)}
             >
               {setOptions}
             </select>
+            {/* Custom chevron */}
+            <svg
+              style={{
+                position: 'absolute',
+                right: 14,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 14,
+                height: 14,
+                color: 'var(--text-secondary)',
+                pointerEvents: 'none',
+              }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
             {setFilter !== 'all' && (
               <div
                 style={{
