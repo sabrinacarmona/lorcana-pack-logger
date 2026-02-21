@@ -274,8 +274,9 @@ export const SetFilterDropdown: React.FC<SetFilterDropdownProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: 8,
                   padding: '0 14px',
+                  height: 40,
                   minHeight: 40,
                   cursor: 'pointer',
                   fontSize: 14,
@@ -308,9 +309,10 @@ export const SetFilterDropdown: React.FC<SetFilterDropdownProps> = ({
                 <span
                   style={{
                     flex: 1,
-                    whiteSpace: 'normal',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                     lineHeight: '1.3',
-                    padding: '8px 0',
                   }}
                 >
                   {opt.label}
