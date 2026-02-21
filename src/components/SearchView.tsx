@@ -130,14 +130,17 @@ export const SearchView: React.FC<SearchViewProps> = ({
           key={card.setCode + '-' + card.cn}
           className="result-item"
           style={{
-            ...inkGradientStyle(card.ink, 0.08),
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '10px 12px',
             cursor: 'pointer',
-            borderBottom: '1px solid rgba(30,51,82,0.5)',
-            background: idx === selectedIdx ? 'var(--accent-subtle)' : 'transparent',
+            borderBottom: '1px solid transparent',
+            borderImage: 'linear-gradient(90deg, rgba(30,51,82,0.5) 0%, transparent 60%) 1',
+            backgroundImage: idx === selectedIdx
+              ? `linear-gradient(90deg, rgba(245,166,35,0.12) 0%, rgba(245,166,35,0.04) 40%, transparent 70%)`
+              : inkGradientStyle(card.ink, 0.08).backgroundImage || 'none',
+            backgroundRepeat: 'no-repeat',
             borderLeft: idx === selectedIdx ? '3px solid var(--accent)' : '3px solid transparent',
             transition: 'border-left-color 150ms ease-out, background 150ms ease',
             animation: 'fadeIn 150ms ease-out',
@@ -154,13 +157,15 @@ export const SearchView: React.FC<SearchViewProps> = ({
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: 10,
               flex: 1,
               minWidth: 0,
             }}
           >
-            <InkDot ink={card.ink} />
+            <span style={{ paddingTop: 6, flexShrink: 0 }}>
+              <InkDot ink={card.ink} />
+            </span>
             <div
               style={{
                 display: 'flex',
