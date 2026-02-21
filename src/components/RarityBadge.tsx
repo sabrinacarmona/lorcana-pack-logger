@@ -90,27 +90,27 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
     );
   }
 
-  // --- Uncommon: steel outline pill ---
+  // --- Uncommon: steel outline pill, one step above Common ---
   if (rarity === 'Uncommon') {
     return (
       <span style={{
         ...base,
-        background: 'rgba(107,114,128,0.1)',
-        color: '#8E9BAE',
-        border: '1px solid rgba(107,114,128,0.2)',
+        background: 'rgba(107,114,128,0.15)',
+        color: '#94A3B5',
+        border: '1px solid rgba(107,114,128,0.28)',
       }}>
         {displayName}
       </span>
     );
   }
 
-  // --- Common: lowest contrast, still a pill ---
+  // --- Common: lowest contrast, still a visible pill ---
   return (
     <span style={{
       ...base,
-      background: 'rgba(90,106,122,0.08)',
-      color: '#6B7280',
-      border: '1px solid rgba(90,106,122,0.12)',
+      background: 'rgba(90,106,122,0.15)',
+      color: '#7A8694',
+      border: '1px solid rgba(90,106,122,0.25)',
     }}>
       {displayName}
     </span>
