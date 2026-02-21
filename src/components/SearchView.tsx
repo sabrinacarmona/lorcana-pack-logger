@@ -171,15 +171,46 @@ export const SearchView: React.FC<SearchViewProps> = ({
             >
               <span
                 style={{
-                  fontSize: 15,
-                  fontWeight: 500,
-                  letterSpacing: '-0.01em',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                 }}
               >
-                {card.display}
+                {(() => {
+                  const dashIdx = card.display.indexOf(' – ');
+                  if (dashIdx >= 0) {
+                    return (
+                      <>
+                        <span style={{
+                          fontFamily: "'Cinzel', serif",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          letterSpacing: '0.01em',
+                        }}>
+                          {card.display.slice(0, dashIdx)}
+                        </span>
+                        <span style={{
+                          fontWeight: 400,
+                          fontSize: 13,
+                          color: 'var(--text-secondary)',
+                          letterSpacing: '-0.01em',
+                        }}>
+                          {card.display.slice(dashIdx)}
+                        </span>
+                      </>
+                    );
+                  }
+                  return (
+                    <span style={{
+                      fontFamily: "'Cinzel', serif",
+                      fontWeight: 600,
+                      fontSize: 14,
+                      letterSpacing: '0.01em',
+                    }}>
+                      {card.display}
+                    </span>
+                  );
+                })()}
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {card.setName} #{card.cn} · {card.type.join(', ')} ·{' '}
@@ -228,10 +259,16 @@ export const SearchView: React.FC<SearchViewProps> = ({
               className="add-btn"
               style={{
                 padding: '4px 10px',
-                background: fCount > 0 ? 'var(--foil)' : 'rgba(191,90,242,0.08)',
-                border: fCount > 0 ? '1px solid var(--foil)' : '1px solid rgba(191,90,242,0.3)',
+                background: fCount > 0
+                  ? 'var(--foil)'
+                  : 'linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(191,90,242,0.18) 40%, rgba(90,200,250,0.08) 80%, rgba(124,58,237,0.1) 100%)',
+                backgroundSize: fCount > 0 ? 'auto' : '300% 100%',
+                animation: fCount > 0 ? 'none' : 'foilShimmer 8s ease-in-out infinite',
+                border: fCount > 0
+                  ? '1px solid var(--foil)'
+                  : '1px solid rgba(124,58,237,0.3)',
                 borderRadius: 'var(--radius-sm)',
-                color: fCount > 0 ? '#fff' : 'var(--foil)',
+                color: fCount > 0 ? '#fff' : '#BF5AF2',
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -649,6 +686,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               style={{
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
+                borderTop: '2px solid rgba(245,166,35,0.3)',
                 borderRadius: 'var(--radius-md)',
                 marginTop: 4,
                 maxHeight: 360,
