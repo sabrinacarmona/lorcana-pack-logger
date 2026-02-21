@@ -141,9 +141,9 @@ export const ExportView: React.FC<ExportViewProps> = ({
           <h1
             style={{
               fontSize: 20,
-              fontWeight: 600,
+              fontWeight: 700,
               letterSpacing: '-0.02em',
-              fontFamily: "'Playfair Display', serif",
+              fontFamily: "'Poppins', sans-serif",
             }}
           >
             Export for Dreamborn
