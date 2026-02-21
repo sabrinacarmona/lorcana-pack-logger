@@ -1,11 +1,12 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { Card, Pull } from '../types';
+import { Card, Pull, ScannerState } from '../types';
 import { PACK_SIZE } from '../constants';
 import { inkGradientStyle } from '../utils/colour';
 import { rarityRowStyle, rarityNameColour } from '../utils/rarity-styles';
 import { InkDot } from './InkDot';
 import { RarityBadge } from './RarityBadge';
 import { PackDivider } from './PackDivider';
+import { ScannerOverlay } from './ScannerOverlay';
 
 interface SearchViewProps {
   search: string;
@@ -33,6 +34,16 @@ interface SearchViewProps {
   onKeyDown: (ev: React.KeyboardEvent<HTMLInputElement>) => void;
   inputRef: React.RefObject<HTMLInputElement>;
   resultsRef: React.RefObject<HTMLDivElement>;
+  // Scanner props
+  scannerActive: boolean;
+  scannerState: ScannerState;
+  lastMatch: Card | null;
+  scannerError: string | null;
+  scanCount: number;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  cameraSupported: boolean;
+  onOpenScanner: () => void;
+  onCloseScanner: () => void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -61,6 +72,15 @@ export const SearchView: React.FC<SearchViewProps> = ({
   onKeyDown,
   inputRef,
   resultsRef,
+  scannerActive,
+  scannerState,
+  lastMatch,
+  scannerError,
+  scanCount,
+  videoRef,
+  cameraSupported,
+  onOpenScanner,
+  onCloseScanner,
 }) => {
   // Generate set options
   const setOptions = useMemo(() => {
@@ -503,76 +523,115 @@ export const SearchView: React.FC<SearchViewProps> = ({
             )}
           </div>
 
-          {/* Search input */}
-          <div
-            style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <svg
+          {/* Search input + camera button row */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div
               style={{
-                position: 'absolute',
-                left: 14,
-                width: 18,
-                height: 18,
-                color:
-                  firstInteraction && pulls.length === 0
-                    ? 'var(--accent)'
-                    : 'var(--text-tertiary)',
-                pointerEvents: 'none',
-                transition: 'color 300ms ease',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                flex: 1,
               }}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
             >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              ref={inputRef}
-              className="search-input"
-              style={{
-                width: '100%',
-                padding: '14px 40px 14px 42px',
-                background: 'var(--bg-surface)',
-                border: '2px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                fontSize: 16,
-                fontFamily: "'Outfit', sans-serif",
-                transition: 'border-color 200ms cubic-bezier(0.25, 0.1, 0.25, 1.0)',
-              }}
-              type="text"
-              placeholder="Search cards..."
-              value={search}
-              onChange={(ev) => onSearchChange(ev.target.value)}
-              onKeyDown={onKeyDown}
-              autoFocus
-            />
-            {search && (
-              <button
+              <svg
                 style={{
                   position: 'absolute',
-                  right: 12,
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  padding: 4,
-                  opacity: search ? 1 : 0,
-                  transition: 'opacity 150ms ease',
+                  left: 14,
+                  width: 18,
+                  height: 18,
+                  color:
+                    firstInteraction && pulls.length === 0
+                      ? 'var(--accent)'
+                      : 'var(--text-tertiary)',
+                  pointerEvents: 'none',
+                  transition: 'color 300ms ease',
                 }}
-                onClick={() => {
-                  onSearchChange('');
-                  if (inputRef.current) inputRef.current.focus();
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                ref={inputRef}
+                className="search-input"
+                style={{
+                  width: '100%',
+                  padding: '14px 40px 14px 42px',
+                  background: 'var(--bg-surface)',
+                  border: '2px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)',
+                  fontSize: 16,
+                  fontFamily: "'Outfit', sans-serif",
+                  transition: 'border-color 200ms cubic-bezier(0.25, 0.1, 0.25, 1.0)',
+                }}
+                type="text"
+                placeholder="Search cards..."
+                value={search}
+                onChange={(ev) => onSearchChange(ev.target.value)}
+                onKeyDown={onKeyDown}
+                autoFocus
+              />
+              {search && (
+                <button
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-tertiary)',
+                    fontSize: 16,
+                    cursor: 'pointer',
+                    padding: 4,
+                    opacity: search ? 1 : 0,
+                    transition: 'opacity 150ms ease',
+                  }}
+                  onClick={() => {
+                    onSearchChange('');
+                    if (inputRef.current) inputRef.current.focus();
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {/* Camera scan button */}
+            {cameraSupported && (
+              <button
+                className="scan-btn"
+                onClick={onOpenScanner}
+                title="Scan card with camera"
+                style={{
+                  width: 48,
+                  height: 48,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--bg-surface)',
+                  border: '2px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--accent)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'border-color 200ms ease, background 200ms ease',
                 }}
               >
-                ✕
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
               </button>
             )}
           </div>
@@ -781,6 +840,19 @@ export const SearchView: React.FC<SearchViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Scanner overlay */}
+      {scannerActive && (
+        <ScannerOverlay
+          scannerState={scannerState}
+          lastMatch={lastMatch}
+          error={scannerError}
+          scanCount={scanCount}
+          videoRef={videoRef}
+          onClose={onCloseScanner}
+          onRetry={onOpenScanner}
+        />
+      )}
     </div>
   );
 };

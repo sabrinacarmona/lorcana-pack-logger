@@ -63,6 +63,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 @keyframes rarityFlashPrismatic { 0% { opacity: 0; background-position: 0% center; } 15% { opacity: 0.3; } 100% { opacity: 0; background-position: 200% center; } }
 @keyframes rarityPulseSR { 0% { transform: scale(1); } 50% { transform: scale(1.25); filter: brightness(1.4); } 100% { transform: scale(1); filter: brightness(1); } }
 @keyframes countBump { 0% { transform: scale(1); } 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes scannerFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scannerFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes scannerGuidePulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+@keyframes scannerMatchFlash { 0% { filter: brightness(1); } 30% { filter: brightness(1.6); } 100% { filter: brightness(1); } }
+@keyframes scannerCardBanner { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* === Interactive element transitions === */
 .search-input:focus { border-color: var(--accent) !important; }
