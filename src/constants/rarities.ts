@@ -1,14 +1,14 @@
 export const RARITY_COLOURS: Record<string, string> = {
-  Common: '#5A6A7A',        // steel grey
-  Uncommon: '#3EB489',       // muted emerald
-  Rare: '#2563EB',           // sapphire
-  'Super Rare': '#D1D9E0',   // silver-white
-  Super_rare: '#D1D9E0',     // silver-white (alias)
-  Legendary: '#E89C24',      // amber
-  Epic: '#D4556B',           // deep rose
-  Enchanted: '#5AC8FA',      // cyan (text colour; border is iridescent)
+  Common: '#4A5568',        // steel grey
+  Uncommon: '#10b981',       // muted emerald
+  Rare: '#3b82f6',           // sapphire
+  'Super Rare': '#94a3b8',   // silver-white
+  Super_rare: '#94a3b8',     // silver-white (alias)
+  Legendary: '#F5A623',      // amber
+  Epic: '#f97316',           // burnt orange
+  Enchanted: '#FFFFFF',      // white (text; border is iridescent)
   Special: '#BF5AF2',        // purple
-  Promo: '#A89075',          // warm neutral
+  Promo: '#a78bfa',          // soft lavender
 }
 
 export const PACK_SIZE = 12

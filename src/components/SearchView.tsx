@@ -135,13 +135,11 @@ export const SearchView: React.FC<SearchViewProps> = ({
             justifyContent: 'space-between',
             padding: '10px 12px',
             cursor: 'pointer',
-            borderBottom: '1px solid transparent',
-            borderImage: 'linear-gradient(90deg, rgba(30,51,82,0.5) 0%, transparent 60%) 1',
             backgroundImage: idx === selectedIdx
               ? `linear-gradient(90deg, rgba(245,166,35,0.12) 0%, rgba(245,166,35,0.04) 40%, transparent 70%)`
               : inkGradientStyle(card.ink, 0.08).backgroundImage || 'none',
             backgroundRepeat: 'no-repeat',
-            borderLeft: idx === selectedIdx ? '3px solid var(--accent)' : '3px solid transparent',
+            borderLeft: idx === selectedIdx ? '3px solid #F5A623' : '3px solid transparent',
             transition: 'border-left-color 150ms ease-out, background 150ms ease',
             animation: 'fadeIn 150ms ease-out',
             animationFillMode: 'both',
@@ -163,7 +161,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               minWidth: 0,
             }}
           >
-            <span style={{ paddingTop: 6, flexShrink: 0 }}>
+            <span style={{ marginTop: 3, flexShrink: 0 }}>
               <InkDot ink={card.ink} />
             </span>
             <div
@@ -264,9 +262,9 @@ export const SearchView: React.FC<SearchViewProps> = ({
               className="add-btn"
               style={{
                 padding: '4px 10px',
-                background: fCount > 0 ? 'var(--foil)' : 'transparent',
+                background: fCount > 0 ? '#9B59B6' : 'transparent',
                 border: fCount > 0
-                  ? '1px solid var(--foil)'
+                  ? '1px solid #9B59B6'
                   : '1px solid rgba(124,58,237,0.35)',
                 borderRadius: 'var(--radius-sm)',
                 color: fCount > 0 ? '#fff' : 'rgba(191,90,242,0.7)',
@@ -306,7 +304,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
             color: 'var(--text-tertiary)',
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
-            fontFamily: "'Poppins', sans-serif",
+            fontFamily: "'Cinzel', serif",
             padding: '4px 0 6px',
             borderBottom: '1px solid var(--border)',
             marginBottom: 4,
@@ -337,13 +335,13 @@ export const SearchView: React.FC<SearchViewProps> = ({
         items.push(
           <div
             key={p.key}
+            className="pull-item"
             style={{
               ...rarityRowStyle(p.card, p.variant),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '8px 4px 8px 8px',
-              borderBottom: '1px solid rgba(30,51,82,0.5)',
+              padding: '10px 4px 10px 8px',
               gap: 8,
               animation:
                 removingKey === p.key
@@ -687,7 +685,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               style={{
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
-                borderTop: '2px solid rgba(245,166,35,0.35)',
+                borderTop: '1px solid rgba(245,166,35,0.25)',
                 borderRadius: '2px 2px var(--radius-md) var(--radius-md)',
                 marginTop: 2,
                 maxHeight: 360,
@@ -865,12 +863,13 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   position: 'absolute',
                   top: '50%',
                   left: '50%',
-                  width: 300,
-                  height: 300,
-                  marginTop: -150,
-                  marginLeft: -150,
+                  width: 280,
+                  height: 280,
+                  marginTop: -140,
+                  marginLeft: -140,
                   animation: 'inkBreath 8s ease-in-out infinite',
                   pointerEvents: 'none',
+                  zIndex: 0,
                 }}
                 viewBox="0 0 200 200"
                 fill="none"
@@ -896,7 +895,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
               <p
                 style={{
                   position: 'relative',
-                  fontFamily: "'Poppins', sans-serif",
+                  zIndex: 1,
+                  fontFamily: "'Cinzel', serif",
                   color: 'rgba(245, 166, 35, 0.7)',
                   fontSize: 22,
                   fontWeight: 700,
@@ -909,6 +909,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               <p
                 style={{
                   position: 'relative',
+                  zIndex: 1,
                   color: '#8E9BAE',
                   fontSize: 13,
                   lineHeight: 1.6,

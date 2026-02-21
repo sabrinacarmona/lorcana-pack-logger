@@ -130,7 +130,17 @@ export const Header: React.FC<HeaderProps> = ({
             minWidth: 0,
           }}
         >
-          <span style={{ fontSize: 20 }}>✨</span>
+          <span style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: 16,
+            fontWeight: 600,
+            color: 'var(--accent)',
+            letterSpacing: '0.02em',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+          }}>
+            ✨ Pack Logger
+          </span>
           <input
             className="session-name-input"
             style={{
