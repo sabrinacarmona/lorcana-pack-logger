@@ -144,41 +144,14 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </button>
         </div>
 
-        {/* Debug text showing OCR output */}
-        {debugText && (scannerState === 'streaming' || scannerState === 'processing') && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 'max(56px, calc(env(safe-area-inset-top) + 48px))',
-              left: 16,
-              right: 16,
-              textAlign: 'center',
-              zIndex: 2,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                color: 'rgba(255,255,255,0.5)',
-                fontFamily: 'monospace',
-                background: 'rgba(0,0,0,0.4)',
-                padding: '4px 8px',
-                borderRadius: 4,
-              }}
-            >
-              {debugText}
-            </span>
-          </div>
-        )}
-
-        {/* Guide frame area */}
+        {/* Guide frame — targets bottom-left of card where collector number is */}
         <div
           style={{
             position: 'absolute',
-            left: '10%',
-            right: '10%',
-            bottom: '20%',
-            height: '12%',
+            left: '5%',
+            width: '45%',
+            bottom: '12%',
+            height: '10%',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -255,7 +228,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                   animation: 'fadeIn 300ms ease-out',
                 }}
               >
-                Point at the collector number (e.g. 123/204)
+                Scanning...
               </span>
             )}
 
@@ -458,7 +431,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 animation: 'fadeIn 300ms ease-out',
               }}
             >
-              Try moving closer or improving lighting
+              Zoom in on the collector number (e.g. 123/204)
             </div>
           )}
         </div>

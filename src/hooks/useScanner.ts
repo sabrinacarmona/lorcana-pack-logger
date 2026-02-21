@@ -12,8 +12,8 @@ const COOLDOWN_MS = 2000
 /** How long to show the "matched" state before resuming scanning (ms). */
 const MATCH_DISPLAY_MS = 1500
 
-/** Minimum OCR confidence (0-100) to consider a reading valid. */
-const MIN_CONFIDENCE = 50
+/** Minimum OCR confidence (0-100) required to accept a result. */
+const MIN_CONFIDENCE = 60
 
 interface UseScannerOptions {
   cards: Card[]
@@ -152,33 +152,29 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     }
     const canvas = canvasRef.current
 
-    // Crop to bottom 15% of the video — collector numbers are at the very bottom
-    const cropTop = Math.floor(video.videoHeight * 0.85)
+    // Crop to bottom-left quadrant — collector number is printed small at the
+    // bottom-left of the card.  A tighter crop gives Tesseract more pixels on
+    // the target and less noise from artwork / flavour text.
+    const cropTop = Math.floor(video.videoHeight * 0.75)
     const cropHeight = video.videoHeight - cropTop
-    canvas.width = video.videoWidth
+    const cropWidth = Math.floor(video.videoWidth * 0.5)
+    canvas.width = cropWidth
     canvas.height = cropHeight
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Draw cropped region with contrast boost
-    ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.2)'
-    ctx.drawImage(video, 0, cropTop, video.videoWidth, cropHeight, 0, 0, video.videoWidth, cropHeight)
+    // Draw cropped region with aggressive contrast boost for small text
+    ctx.filter = 'grayscale(1) contrast(2.2) brightness(1.4)'
+    ctx.drawImage(video, 0, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
     ctx.filter = 'none'
 
     processingRef.current = true
     try {
       const { text, confidence } = await recognizeFromCanvas(canvas)
 
-      // Update debug display with raw OCR output
-      if (text) {
-        setDebugText(`OCR: "${text}" (${Math.round(confidence)}%)`)
-      }
-
-      // Reject low-confidence readings
-      if (confidence < MIN_CONFIDENCE) {
-        return
-      }
+      // Reject low-confidence reads — they produce garbage like single digits
+      if (confidence < MIN_CONFIDENCE) return
 
       const parsed = parseCollectorNumber(text)
 

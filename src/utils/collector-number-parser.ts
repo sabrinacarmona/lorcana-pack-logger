@@ -24,7 +24,9 @@ export function parseCollectorNumber(ocrText: string): ParsedCollectorNumber | n
     .replace(/[sS]/g, '5')    // S → 5 in numeric context
     .replace(/[bB]/g, '8')    // b/B → 8
 
-  // Primary: "123/204" or "123 / 204" or "123\204"
+  // Require the slash format "123/204" (with optional spaces and backslash).
+  // Bare standalone digits are too ambiguous for reliable auto-matching — they
+  // produce false positives from ink costs, set numbers, or OCR noise.
   const slashPattern = /(\d{1,3})\s*[\/\\]\s*(\d{2,3})/
   const slashMatch = cleaned.match(slashPattern)
   if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[0]) {
@@ -34,10 +36,6 @@ export function parseCollectorNumber(ocrText: string): ParsedCollectorNumber | n
     }
   }
 
-  // Secondary: "123 / 204" with wider spacing or OCR artifacts between them.
-  // We no longer match standalone bare numbers — they cause too many false
-  // positives (ink costs, willpower, etc. get matched as collector numbers).
-  // Only the X/Y format is reliable enough for automatic matching.
   return null
 }
 

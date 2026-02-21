@@ -67,13 +67,16 @@ describe('parseCollectorNumber', () => {
     expect(result).toEqual({ cn: '23', total: '204', raw: '023/204' })
   })
 
-  // --- Fallback: standalone number ---
-  it('falls back to standalone number when no slash format found', () => {
-    const result = parseCollectorNumber('collector 123')
-    expect(result).toEqual({ cn: '123', total: null, raw: '123' })
+  // --- Standalone numbers are rejected (too ambiguous) ---
+  it('rejects standalone number without slash format', () => {
+    expect(parseCollectorNumber('collector 123')).toBeNull()
   })
 
-  it('prefers slash format over standalone number', () => {
+  it('rejects bare single digit (e.g. OCR noise)', () => {
+    expect(parseCollectorNumber('1')).toBeNull()
+  })
+
+  it('prefers slash format over surrounding noise', () => {
     const result = parseCollectorNumber('cost 4 collector 123/204')
     expect(result).toEqual({ cn: '123', total: '204', raw: '123/204' })
   })
@@ -87,10 +90,8 @@ describe('parseCollectorNumber', () => {
     expect(parseCollectorNumber('some random text')).toBeNull()
   })
 
-  it('rejects cn 0 in slash format but falls back to standalone', () => {
-    // "0/204" has cn=0 which is invalid, but "204" is a valid standalone number
-    const result = parseCollectorNumber('0/204')
-    expect(result).toEqual({ cn: '204', total: null, raw: '204' })
+  it('returns null for "0/204" (cn 0 is invalid)', () => {
+    expect(parseCollectorNumber('0/204')).toBeNull()
   })
 
   it('handles max collector number 999/999', () => {

@@ -39,6 +39,16 @@ export interface OcrResult {
  * The canvas should contain a cropped, preprocessed image of the
  * area where the collector number is expected.
  */
+export interface OcrResult {
+  text: string
+  confidence: number
+}
+
+/**
+ * Run OCR on a canvas element and return the recognised text with confidence.
+ * The canvas should contain a cropped, preprocessed image of the
+ * area where the collector number is expected.
+ */
 export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<OcrResult> {
   const worker = await getWorker()
   const { data } = await worker.recognize(canvas)
