@@ -31,7 +31,7 @@ export const SetFilterDropdown: React.FC<SetFilterDropdownProps> = ({
       { code: 'all', label: 'All Sets' },
     ];
     Object.keys(setMap).forEach((code) => {
-      items.push({ code, label: setMap[code] });
+      items.push({ code, label: setMap[code] ?? code });
     });
     return items;
   }, [setMap]);
@@ -102,8 +102,11 @@ export const SetFilterDropdown: React.FC<SetFilterDropdownProps> = ({
         case 'Enter':
         case ' ':
           ev.preventDefault();
-          if (highlightedIdx >= 0 && highlightedIdx < options.length) {
-            selectOption(options[highlightedIdx].code);
+          {
+            const opt = options[highlightedIdx];
+            if (highlightedIdx >= 0 && opt) {
+              selectOption(opt.code);
+            }
           }
           break;
         case 'Escape':
@@ -140,7 +143,9 @@ export const SetFilterDropdown: React.FC<SetFilterDropdownProps> = ({
         aria-haspopup="listbox"
         aria-controls={listboxId}
         aria-activedescendant={
-          isOpen && highlightedIdx >= 0 ? `set-option-${options[highlightedIdx].code}` : undefined
+          isOpen && highlightedIdx >= 0 && options[highlightedIdx]
+            ? `set-option-${options[highlightedIdx].code}`
+            : undefined
         }
         className="set-filter-trigger"
         style={{
