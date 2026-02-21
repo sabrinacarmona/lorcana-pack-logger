@@ -11,7 +11,7 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
   const displayName =
     rarity === 'Super_rare' ? 'Super Rare' : rarity === 'Rare' ? 'Rare' : rarity;
 
-  // Enchanted: prismatic animated background
+  // Enchanted: prismatic animated background with glow
   if (rarity === 'Enchanted') {
     return (
       <span
@@ -28,6 +28,7 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
           textShadow: '0 0 2px rgba(0, 0, 0, 0.4)',
           textTransform: 'uppercase',
           display: 'inline-block',
+          boxShadow: '0 0 8px rgba(191,90,242,0.4), 0 0 16px rgba(90,200,250,0.2)',
         }}
       >
         {displayName}
@@ -35,7 +36,7 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
     );
   }
 
-  // Legendary: gold chip
+  // Legendary: gold chip with warm glow
   if (rarity === 'Legendary') {
     return (
       <span
@@ -44,12 +45,13 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
           fontWeight: 700,
           padding: '3px 8px',
           borderRadius: 'var(--radius-sm)',
-          background: '#FFD60A',
+          background: 'linear-gradient(135deg, #FFD60A, #FFA500)',
           color: '#000',
           letterSpacing: '0.05em',
           textShadow: '0 1px 2px rgba(255, 255, 255, 0.3)',
           textTransform: 'uppercase',
           display: 'inline-block',
+          boxShadow: '0 0 8px rgba(255,214,10,0.5), 0 0 20px rgba(255,214,10,0.15)',
         }}
       >
         {displayName}
@@ -57,7 +59,7 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
     );
   }
 
-  // Super Rare: blue chip
+  // Super Rare: blue chip with cool glow
   if (rarity === 'Super Rare' || rarity === 'Super_rare') {
     return (
       <span
@@ -66,12 +68,13 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
           fontWeight: 700,
           padding: '3px 8px',
           borderRadius: 'var(--radius-sm)',
-          background: '#64D2FF',
+          background: 'linear-gradient(135deg, #64D2FF, #38B6FF)',
           color: '#000',
           letterSpacing: '0.05em',
           textShadow: '0 1px 2px rgba(255, 255, 255, 0.3)',
           textTransform: 'uppercase',
           display: 'inline-block',
+          boxShadow: '0 0 8px rgba(100,210,255,0.4), 0 0 16px rgba(100,210,255,0.15)',
         }}
       >
         {displayName}
@@ -79,15 +82,37 @@ export const RarityBadge: React.FC<RarityBadgeProps> = ({ rarity }) => {
     );
   }
 
-  // Default: subtle styling
+  // Rare: stronger tinted chip
+  if (rarity === 'Rare') {
+    return (
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          padding: '3px 8px',
+          borderRadius: 'var(--radius-sm)',
+          background: `${colour}30`,
+          color: colour,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          display: 'inline-block',
+          border: `1px solid ${colour}40`,
+        }}
+      >
+        {displayName}
+      </span>
+    );
+  }
+
+  // Default (Common, Uncommon): subtle styling
   return (
     <span
       style={{
         fontSize: 10,
-        fontWeight: 700,
+        fontWeight: 600,
         padding: '3px 8px',
         borderRadius: 'var(--radius-sm)',
-        background: `${colour}20`,
+        background: `${colour}18`,
         color: colour,
         letterSpacing: '0.05em',
         textTransform: 'uppercase',

@@ -17,7 +17,9 @@ export function inkGradientStyle(
     backgroundImage:
       'linear-gradient(90deg, ' +
       hexToRgba(col, opacity) +
-      ' 0%, transparent 80px)',
+      ' 0%, ' +
+      hexToRgba(col, opacity * 0.4) +
+      ' 40%, transparent 70%)',
     backgroundRepeat: 'no-repeat',
   }
 }
