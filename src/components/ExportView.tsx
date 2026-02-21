@@ -143,6 +143,7 @@ export const ExportView: React.FC<ExportViewProps> = ({
               fontSize: 20,
               fontWeight: 600,
               letterSpacing: '-0.02em',
+              fontFamily: "'Playfair Display', serif",
             }}
           >
             Export for Dreamborn

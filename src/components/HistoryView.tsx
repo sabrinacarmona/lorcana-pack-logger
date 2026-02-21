@@ -131,6 +131,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onBack }) => 
               fontSize: 20,
               fontWeight: 600,
               letterSpacing: '-0.02em',
+              fontFamily: "'Playfair Display', serif",
             }}
           >
             Export History

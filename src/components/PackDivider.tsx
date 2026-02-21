@@ -28,7 +28,8 @@ export const PackDivider: React.FC<PackDividerProps> = ({ packNumber }) => {
           fontWeight: 600,
           color: 'var(--text-tertiary)',
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
+          letterSpacing: '0.08em',
+          fontFamily: "'Playfair Display', serif",
           whiteSpace: 'nowrap',
         }}
       >
