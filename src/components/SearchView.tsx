@@ -259,16 +259,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
               className="add-btn"
               style={{
                 padding: '4px 10px',
-                background: fCount > 0
-                  ? 'var(--foil)'
-                  : 'linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(191,90,242,0.18) 40%, rgba(90,200,250,0.08) 80%, rgba(124,58,237,0.1) 100%)',
-                backgroundSize: fCount > 0 ? 'auto' : '300% 100%',
-                animation: fCount > 0 ? 'none' : 'foilShimmer 8s ease-in-out infinite',
+                background: fCount > 0 ? 'var(--foil)' : 'transparent',
                 border: fCount > 0
                   ? '1px solid var(--foil)'
-                  : '1px solid rgba(124,58,237,0.3)',
+                  : '1px solid rgba(124,58,237,0.35)',
                 borderRadius: 'var(--radius-sm)',
-                color: fCount > 0 ? '#fff' : '#BF5AF2',
+                color: fCount > 0 ? '#fff' : 'rgba(191,90,242,0.7)',
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -686,9 +682,9 @@ export const SearchView: React.FC<SearchViewProps> = ({
               style={{
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
-                borderTop: '2px solid rgba(245,166,35,0.3)',
-                borderRadius: 'var(--radius-md)',
-                marginTop: 4,
+                borderTop: '2px solid rgba(245,166,35,0.35)',
+                borderRadius: '2px 2px var(--radius-md) var(--radius-md)',
+                marginTop: 2,
                 maxHeight: 360,
                 overflowY: 'auto',
                 boxShadow: 'var(--shadow-dropdown)',
@@ -766,10 +762,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
             <h2
               style={{
                 fontSize: 16,
-                fontWeight: 700,
+                fontWeight: 600,
                 color: 'var(--text-primary)',
-                fontFamily: "'Poppins', sans-serif",
-                letterSpacing: '-0.01em',
+                fontFamily: "'Cinzel', serif",
+                letterSpacing: '0.02em',
               }}
             >
               Session Pulls
