@@ -267,8 +267,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
             fontWeight: 600,
             color: 'var(--text-tertiary)',
             textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            fontFamily: "'Playfair Display', serif",
+            letterSpacing: '0.04em',
+            fontFamily: "'Poppins', sans-serif",
             padding: '4px 0 6px',
             borderBottom: '1px solid var(--border)',
             marginBottom: 4,
@@ -728,10 +728,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
             <h2
               style={{
                 fontSize: 16,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--text-primary)',
-                fontFamily: "'Playfair Display', serif",
-                letterSpacing: '0.01em',
+                fontFamily: "'Poppins', sans-serif",
+                letterSpacing: '-0.01em',
               }}
             >
               Session Pulls
@@ -857,12 +857,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
               <p
                 style={{
                   position: 'relative',
-                  fontFamily: "'Playfair Display', serif",
+                  fontFamily: "'Poppins', sans-serif",
                   color: 'rgba(245, 166, 35, 0.7)',
                   fontSize: 22,
-                  fontWeight: 500,
+                  fontWeight: 700,
                   marginBottom: 12,
-                  letterSpacing: '0.02em',
+                  letterSpacing: '-0.01em',
                 }}
               >
                 The Inkwell Awaits
