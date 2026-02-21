@@ -40,10 +40,13 @@ interface SearchViewProps {
   lastMatch: Card | null;
   scannerError: string | null;
   scanCount: number;
+  debugText: string;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   cameraSupported: boolean;
   onOpenScanner: () => void;
   onCloseScanner: () => void;
+  onConfirmMatch: () => void;
+  onRejectMatch: () => void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -77,10 +80,13 @@ export const SearchView: React.FC<SearchViewProps> = ({
   lastMatch,
   scannerError,
   scanCount,
+  debugText,
   videoRef,
   cameraSupported,
   onOpenScanner,
   onCloseScanner,
+  onConfirmMatch,
+  onRejectMatch,
 }) => {
   // Generate set options
   const setOptions = useMemo(() => {
@@ -848,9 +854,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
           lastMatch={lastMatch}
           error={scannerError}
           scanCount={scanCount}
+          debugText={debugText}
           videoRef={videoRef}
           onClose={onCloseScanner}
           onRetry={onOpenScanner}
+          onConfirm={onConfirmMatch}
+          onReject={onRejectMatch}
         />
       )}
     </div>
