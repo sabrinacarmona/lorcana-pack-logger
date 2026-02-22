@@ -240,15 +240,15 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             })}
           </div>
 
-          {/* CN region indicator — dashed rect at bottom of guide */}
+          {/* CN region indicator — dashed rect at card bottom */}
           {(scannerState === 'streaming' || scannerState === 'processing') && (
             <div
               style={{
                 position: 'absolute',
-                left: '20%',
-                width: '60%',
-                top: '88%',
-                height: '10%',
+                left: '2%',
+                width: '55%',
+                top: '92%',
+                height: '7%',
                 border: '1px dashed rgba(52,199,89,0.5)',
                 borderRadius: 4,
                 pointerEvents: 'none',
@@ -256,17 +256,17 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             />
           )}
 
-          {/* Ink dot indicator — dashed circle at bottom-left of guide */}
+          {/* Ink colour indicator — dashed rect on card name banner */}
           {(scannerState === 'streaming' || scannerState === 'processing') && (
             <div
               style={{
                 position: 'absolute',
-                left: '2%',
-                top: '85%',
-                width: '12%',
-                height: '12%',
+                left: '1%',
+                top: '52%',
+                width: '10%',
+                height: '10%',
                 border: '1px dashed rgba(175,82,222,0.5)',
-                borderRadius: '50%',
+                borderRadius: 4,
                 pointerEvents: 'none',
               }}
             />
@@ -660,19 +660,19 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             },
             {
               label: 'Algorithm Crop',
-              desc: 'What gets sent to image matching (inner 64×58% of frame)',
+              desc: 'Card-shaped centre crop (inner 64×58% of frame)',
               src: debugCaptures.algoCrop,
               border: '#f5a623',
             },
             {
               label: 'Collector Number Region',
-              desc: 'Bottom of card — where "102/204 · EN" lives',
+              desc: 'Very bottom of card — "102/204 · EN" text line',
               src: debugCaptures.cnRegion,
               border: '#34c759',
             },
             {
-              label: 'Ink Dot Region',
-              desc: 'Bottom-left corner — the ink colour circle',
+              label: 'Ink Colour Region',
+              desc: 'Card name banner — solid ink colour source',
               src: debugCaptures.inkDotRegion,
               border: '#af52de',
             },

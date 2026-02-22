@@ -27,16 +27,19 @@ const ALGO_CROP_Y = 0.21
 const ALGO_CROP_W = 0.64
 const ALGO_CROP_H = 0.58
 
-// Collector number region — bottom 10% of the algo crop, centre 60%
-const CN_REGION_LEFT = 0.20
-const CN_REGION_TOP = 0.88
-const CN_REGION_HEIGHT = 0.10
-const CN_REGION_WIDTH = 0.60
+// Collector number region — the very bottom line of the card ("102/204 · EN · 7").
+// Pushed low: card bottom sits at ~95% of algo crop, CN text is ~92-98%.
+const CN_REGION_LEFT = 0.02
+const CN_REGION_TOP = 0.92
+const CN_REGION_HEIGHT = 0.07
+const CN_REGION_WIDTH = 0.55
 
-// Ink dot region — bottom-left 12% square of the algo crop
-const INK_REGION_LEFT = 0.02
-const INK_REGION_TOP = 0.85
-const INK_REGION_SIZE = 0.12
+// Ink colour region — sample from the card's name banner area.
+// The banner behind "PACHA / Trekmate" is a large solid area of the ink colour.
+// Left edge avoids the white text; brightness filtering handles any that leaks in.
+const INK_REGION_LEFT = 0.01
+const INK_REGION_TOP = 0.52
+const INK_REGION_SIZE = 0.10
 
 interface UseScannerOptions {
   cards: Card[]
