@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Card, ScannerState } from '../types'
-import { recognizeCollectorNumber } from '../utils/ocr-worker'
+import { recognizeCollectorNumber, terminateWorker } from '../utils/ocr-worker'
 import { parseCollectorNumber } from '../utils/collector-number-parser'
 import { matchCardByCollectorNumber } from '../utils/card-cn-matcher'
 import { detectInkColor } from '../utils/ink-detector'
@@ -444,12 +444,18 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     setLastOcrText('')
     setLastDetectedInk(null)
     processingRef.current = false
+    // Release off-screen canvases
+    cnCanvasRef.current = null
+    inkCanvasRef.current = null
+    // Terminate OCR worker to reclaim ~4 MB (re-created lazily on next open)
+    terminateWorker().catch(() => {})
   }, [stopStream])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopStream()
+      terminateWorker().catch(() => {})
     }
   }, [stopStream])
 

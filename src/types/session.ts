@@ -27,6 +27,6 @@ export interface HistoryPull {
 
 export type ViewType = 'search' | 'export' | 'history'
 export type ViewDirection = 'left' | 'right'
-export type CardSource = '' | 'cached' | 'updated' | 'offline'
+export type CardSource = '' | 'cached' | 'updated' | 'offline' | 'error'
 export type RarityFlashType = 'enchanted' | 'legendary' | 'superrare' | null
 export type ScannerState = 'idle' | 'requesting' | 'streaming' | 'processing' | 'matched' | 'disambiguating' | 'error'

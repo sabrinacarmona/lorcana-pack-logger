@@ -30,6 +30,8 @@ export function useSets() {
       setSetMap(map)
       setSetColours(colours)
       setSetsSource(source)
+    }).catch(() => {
+      if (!cancelled) setSetsSource('offline')
     })
 
     return () => {

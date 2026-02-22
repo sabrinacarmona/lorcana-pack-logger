@@ -31,6 +31,8 @@ export function App() {
     fetchCardDatabase().then(({ data, source }) => {
       if (data) setCardData(data)
       setCardSource(source)
+    }).catch(() => {
+      setCardSource('error')
     })
   }, [])
 

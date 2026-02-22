@@ -4,6 +4,19 @@ let workerInstance: Tesseract.Worker | null = null
 let initPromise: Promise<Tesseract.Worker> | null = null
 
 /**
+ * Simple mutex to serialise worker calls.  Tesseract.js workers are NOT
+ * safe for concurrent operations — interleaved setParameters + recognize
+ * calls corrupt each other.  This ensures only one call runs at a time.
+ */
+let workerLock: Promise<void> = Promise.resolve()
+
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = workerLock.then(fn, fn) // run fn regardless of prior result
+  workerLock = next.then(() => {}, () => {}) // swallow to keep chain alive
+  return next
+}
+
+/**
  * Get the shared Tesseract worker, creating it lazily on first call.
  * The worker is a singleton reused across scanner sessions so we only
  * download the ~4 MB English trained data once.
@@ -36,10 +49,12 @@ export interface OcrResult {
  * Run OCR on a canvas element and return the recognised text with confidence.
  * The canvas should contain a cropped, preprocessed image of the card name area.
  */
-export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<OcrResult> {
-  const worker = await getWorker()
-  const { data } = await worker.recognize(canvas)
-  return { text: data.text.trim(), confidence: data.confidence }
+export function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<OcrResult> {
+  return withLock(async () => {
+    const worker = await getWorker()
+    const { data } = await worker.recognize(canvas)
+    return { text: data.text.trim(), confidence: data.confidence }
+  })
 }
 
 /**
@@ -49,26 +64,28 @@ export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<Oc
  * character whitelist to numeric chars.  This dramatically improves accuracy
  * for the small "128/204" text at the bottom of Lorcana cards.
  */
-export async function recognizeCollectorNumber(canvas: HTMLCanvasElement): Promise<OcrResult> {
-  const worker = await getWorker()
-  try {
-    // SPARSE_TEXT finds text anywhere in the image — ideal for a generous crop
-    // area where the collector number could appear at any position.
-    // The character whitelist restricts output to digits + slash so the parser
-    // can easily pick out the "123/204" pattern.
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
-      tessedit_char_whitelist: '0123456789/\\| ',
-    })
-    const { data } = await worker.recognize(canvas)
-    return { text: data.text.trim(), confidence: data.confidence }
-  } finally {
-    // Restore defaults so the next recognizeFromCanvas call works correctly
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-      tessedit_char_whitelist: '',
-    })
-  }
+export function recognizeCollectorNumber(canvas: HTMLCanvasElement): Promise<OcrResult> {
+  return withLock(async () => {
+    const worker = await getWorker()
+    try {
+      // SPARSE_TEXT finds text anywhere in the image — ideal for a generous crop
+      // area where the collector number could appear at any position.
+      // The character whitelist restricts output to digits + slash so the parser
+      // can easily pick out the "123/204" pattern.
+      await worker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
+        tessedit_char_whitelist: '0123456789/\\| ',
+      })
+      const { data } = await worker.recognize(canvas)
+      return { text: data.text.trim(), confidence: data.confidence }
+    } finally {
+      // Restore defaults so the next recognizeFromCanvas call works correctly
+      await worker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+        tessedit_char_whitelist: '',
+      })
+    }
+  })
 }
 
 /**
