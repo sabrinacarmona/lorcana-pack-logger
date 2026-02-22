@@ -15,13 +15,13 @@ const COOLDOWN_MS = 2000
 const MATCH_DISPLAY_MS = 1500
 
 /** Minimum OCR confidence (0-100) required to attempt name matching. */
-const MIN_CONFIDENCE = 50
+const MIN_CONFIDENCE = 60
 
 /** Lower threshold for collector number — regex validates, so we can be lenient. */
 const MIN_CN_CONFIDENCE = 15
 
 /** Scale factor applied to cropped images before OCR (bigger text = better accuracy). */
-const OCR_SCALE = 3
+const OCR_SCALE = 4
 
 interface UseScannerOptions {
   cards: Card[]
@@ -162,8 +162,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       if (bnCtx) {
         bnCtx.imageSmoothingEnabled = true
         bnCtx.imageSmoothingQuality = 'high'
-        // High contrast + brightness to make the small printed text pop
-        bnCtx.filter = 'grayscale(1) contrast(3.5) brightness(1.6)'
+        // Moderate contrast — too high destroys detail on tiny text
+        bnCtx.filter = 'grayscale(1) contrast(2.2) brightness(1.2)'
         bnCtx.drawImage(
           video,
           bnCropLeft, bnCropTop, bnCropWidth, bnCropHeight,
@@ -171,11 +171,22 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         )
         bnCtx.filter = 'none'
 
-        // Binarise — convert to pure black & white for cleaner OCR
+        // Binarise + invert — Tesseract works best with DARK text on LIGHT
+        // background.  Lorcana CN text is often light/silver on a dark card
+        // border, so after binarisation we invert to get dark-on-white.
         const imgData = bnCtx.getImageData(0, 0, bottomCanvas.width, bottomCanvas.height)
         const px = imgData.data
+        // Count dark pixels to detect polarity
+        let darkCount = 0
         for (let i = 0; i < px.length; i += 4) {
-          const v = px[i]! > 140 ? 255 : 0
+          if (px[i]! < 128) darkCount++
+        }
+        // If image is mostly dark → text is light → need to invert
+        // If image is mostly light → text is dark → keep as-is
+        const shouldInvert = darkCount > px.length / 4 / 2
+        for (let i = 0; i < px.length; i += 4) {
+          const bin = px[i]! > 128 ? 255 : 0
+          const v = shouldInvert ? 255 - bin : bin
           px[i] = px[i + 1] = px[i + 2] = v
         }
         bnCtx.putImageData(imgData, 0, 0)

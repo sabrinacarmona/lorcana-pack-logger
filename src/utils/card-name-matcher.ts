@@ -10,8 +10,10 @@ export interface NameMatchResult {
   similarity: number
 }
 
-/** Minimum similarity (0-1) to consider a match valid. */
-const AUTO_MATCH_THRESHOLD = 0.55
+/** Minimum similarity (0-1) to consider a match valid.
+ *  0.75 requires ~75 % of the characters to be correct — strict enough to
+ *  reject OCR garbage while still tolerating a few misreads. */
+const AUTO_MATCH_THRESHOLD = 0.75
 
 /** If the gap between #1 and #2 is smaller than this, treat as ambiguous. */
 const AMBIGUITY_GAP = 0.1
@@ -30,7 +32,7 @@ export function matchCardByName(
   const noMatch: NameMatchResult = { card: null, candidates: [], similarity: 0 }
 
   const cleaned = cleanOcrText(ocrText)
-  if (cleaned.length < 2) return noMatch
+  if (cleaned.length < 4) return noMatch
 
   const pool = setFilter !== 'all'
     ? cards.filter((c) => c.setCode === setFilter)
