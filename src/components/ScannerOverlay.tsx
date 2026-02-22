@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { Card, ScannerState } from '../types'
-import type { MatchMethod, ScannerDebugInfo } from '../hooks/useScanner'
+import type { MatchMethod, ScannerDebugInfo, DebugCaptures } from '../hooks/useScanner'
 import { RarityBadge } from './RarityBadge'
 import { InkDot } from './InkDot'
 
@@ -12,10 +12,13 @@ interface ScannerOverlayProps {
   error: string | null
   scanCount: number
   debugInfo: ScannerDebugInfo | null
+  debugCaptures: DebugCaptures | null
   videoRef: React.RefObject<HTMLVideoElement | null>
   onClose: () => void
   onRetry: () => void
   onSelectCandidate: (card: Card) => void
+  onCaptureDebug: () => void
+  onDismissDebugCaptures: () => void
 }
 
 export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
@@ -26,10 +29,13 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   error,
   scanCount,
   debugInfo,
+  debugCaptures,
   videoRef,
   onClose,
   onRetry,
   onSelectCandidate,
+  onCaptureDebug,
+  onDismissDebugCaptures,
 }) => {
   const [showHint, setShowHint] = useState(false)
 
@@ -129,25 +135,51 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               </span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(255,255,255,0.15)',
-              border: 'none',
-              borderRadius: 'var(--radius-full)',
-              color: '#fff',
-              fontSize: 18,
-              cursor: 'pointer',
-              fontFamily: "'Outfit', sans-serif",
-            }}
-          >
-            ✕
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Debug capture button — freezes frame and shows what the algorithm sees */}
+            {(scannerState === 'streaming' || scannerState === 'processing' || scannerState === 'disambiguating') && (
+              <button
+                onClick={onCaptureDebug}
+                style={{
+                  height: 36,
+                  padding: '0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  background: 'rgba(59,130,246,0.3)',
+                  border: '1px solid rgba(59,130,246,0.5)',
+                  borderRadius: 'var(--radius-full)',
+                  color: '#7cb3ff',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                Debug
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: 'var(--radius-full)',
+                color: '#fff',
+                fontSize: 18,
+                cursor: 'pointer',
+                fontFamily: "'Outfit', sans-serif",
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Single card-shaped guide frame */}
@@ -514,6 +546,141 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </div>
         )}
       </div>
+
+      {/* ── Debug Captures Viewer ─────────────────────────────────────── */}
+      {debugCaptures && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2000,
+            background: 'rgba(0,0,0,0.95)',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            padding: '16px',
+            paddingTop: 'max(16px, env(safe-area-inset-top))',
+            paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 16,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#7cb3ff',
+                fontFamily: "'Outfit', sans-serif",
+              }}
+            >
+              Debug Capture
+              <span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: 8 }}>
+                {debugCaptures.videoRes}
+              </span>
+            </span>
+            <button
+              onClick={onDismissDebugCaptures}
+              style={{
+                padding: '6px 16px',
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: 'var(--radius-full)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: "'Outfit', sans-serif",
+              }}
+            >
+              Back
+            </button>
+          </div>
+
+          {/* Caption explaining purpose */}
+          <div
+            style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.5)',
+              fontFamily: "'Outfit', sans-serif",
+              marginBottom: 16,
+              lineHeight: 1.5,
+            }}
+          >
+            These are the exact pixels the algorithm receives. If the card
+            isn't visible or centered in these crops, no matching technique
+            will work.
+          </div>
+
+          {/* Image grid — each crop with a label */}
+          {([
+            {
+              label: 'Full Camera Frame',
+              desc: 'Raw video feed, uncropped',
+              src: debugCaptures.fullFrame,
+              border: '#555',
+            },
+            {
+              label: 'Algorithm Crop',
+              desc: 'What gets sent to image matching (inner 64×58% of frame)',
+              src: debugCaptures.algoCrop,
+              border: '#f5a623',
+            },
+            {
+              label: 'Collector Number Region',
+              desc: 'Bottom of card — where "102/204 · EN" lives',
+              src: debugCaptures.cnRegion,
+              border: '#34c759',
+            },
+            {
+              label: 'Ink Dot Region',
+              desc: 'Bottom-left corner — the ink colour circle',
+              src: debugCaptures.inkDotRegion,
+              border: '#af52de',
+            },
+          ] as const).map((item) => (
+            <div key={item.label} style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 6 }}>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: item.border,
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  {item.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.4)',
+                    fontFamily: "'Outfit', sans-serif",
+                    marginLeft: 8,
+                  }}
+                >
+                  {item.desc}
+                </span>
+              </div>
+              <img
+                src={item.src}
+                alt={item.label}
+                style={{
+                  width: '100%',
+                  borderRadius: 8,
+                  border: `2px solid ${item.border}`,
+                  display: 'block',
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

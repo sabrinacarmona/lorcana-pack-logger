@@ -221,11 +221,14 @@ export function App() {
               scannerError={scanner.error}
               scanCount={scanner.scanCount}
               debugInfo={scanner.debugInfo}
+              debugCaptures={scanner.debugCaptures}
               videoRef={scanner.videoRef}
               cameraSupported={cameraSupported}
               onOpenScanner={scanner.openScanner}
               onCloseScanner={scanner.closeScanner}
               onSelectCandidate={scanner.selectCandidate}
+              onCaptureDebug={scanner.captureDebugFrame}
+              onDismissDebugCaptures={scanner.dismissDebugCaptures}
             />
             </ErrorBoundary>
           )}

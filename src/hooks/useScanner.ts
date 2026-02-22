@@ -27,6 +27,20 @@ export interface ScannerDebugInfo {
   bestName: string
 }
 
+/** Data URLs of captured frame regions for visual debugging. */
+export interface DebugCaptures {
+  /** Full uncropped camera frame. */
+  fullFrame: string
+  /** The crop currently sent to the matching algorithm. */
+  algoCrop: string
+  /** Bottom ~15% of the card area — where the collector number lives. */
+  cnRegion: string
+  /** Bottom-left corner — where the ink colour dot lives. */
+  inkDotRegion: string
+  /** Dimensions of the raw video feed. */
+  videoRes: string
+}
+
 export interface UseScannerReturn {
   scannerActive: boolean
   scannerState: ScannerState
@@ -37,9 +51,12 @@ export interface UseScannerReturn {
   videoRef: React.RefObject<HTMLVideoElement | null>
   scanCount: number
   debugInfo: ScannerDebugInfo | null
+  debugCaptures: DebugCaptures | null
   openScanner: () => void
   closeScanner: () => void
   selectCandidate: (card: Card) => void
+  captureDebugFrame: () => void
+  dismissDebugCaptures: () => void
 }
 
 export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOptions): UseScannerReturn {
@@ -50,6 +67,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const [error, setError] = useState<string | null>(null)
   const [scanCount, setScanCount] = useState(0)
   const [debugInfo, setDebugInfo] = useState<ScannerDebugInfo | null>(null)
+  const [debugCaptures, setDebugCaptures] = useState<DebugCaptures | null>(null)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -111,6 +129,69 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const selectCandidate = useCallback((card: Card) => {
     acceptMatch(card)
   }, [acceptMatch])
+
+  /**
+   * Capture the current camera frame and extract labelled regions as data URLs.
+   * This is the "see what the algorithm sees" debug tool.
+   */
+  const captureDebugFrame = useCallback(() => {
+    if (!videoRef.current || videoRef.current.readyState < 2) return
+
+    const video = videoRef.current
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+    if (vw === 0 || vh === 0) return
+
+    const snap = document.createElement('canvas')
+    const sCtx = snap.getContext('2d')
+    if (!sCtx) return
+
+    // Helper: crop a region from the video and return a data URL
+    const cropToDataUrl = (
+      xPct: number, yPct: number, wPct: number, hPct: number,
+    ): string => {
+      const sx = Math.floor(vw * xPct)
+      const sy = Math.floor(vh * yPct)
+      const sw = Math.floor(vw * wPct)
+      const sh = Math.floor(vh * hPct)
+      snap.width = sw
+      snap.height = sh
+      sCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
+      return snap.toDataURL('image/jpeg', 0.85)
+    }
+
+    // 1. Full uncropped frame
+    snap.width = vw
+    snap.height = vh
+    sCtx.drawImage(video, 0, 0)
+    const fullFrame = snap.toDataURL('image/jpeg', 0.7)
+
+    // 2. Algo crop — exactly what processFrame sends to matching
+    //    (must match the percentages in processFrame below)
+    const algoCrop = cropToDataUrl(0.18, 0.20, 0.64, 0.58)
+
+    // 3. Collector number region — bottom ~12% of the guide frame area
+    //    Guide frame: left 12%, right 12%, top 15%, bottom 18%
+    //    CN text sits at very bottom of card: roughly 70%-82% of viewport height
+    const cnRegion = cropToDataUrl(0.15, 0.68, 0.70, 0.12)
+
+    // 4. Ink dot — bottom-left corner of card
+    //    The ink dot is a small circle near bottom-left, roughly:
+    //    x: 14%-26%, y: 72%-82% of viewport
+    const inkDotRegion = cropToDataUrl(0.14, 0.70, 0.14, 0.12)
+
+    setDebugCaptures({
+      fullFrame,
+      algoCrop,
+      cnRegion,
+      inkDotRegion,
+      videoRes: `${vw}×${vh}`,
+    })
+  }, [])
+
+  const dismissDebugCaptures = useCallback(() => {
+    setDebugCaptures(null)
+  }, [])
 
   const processFrame = useCallback(() => {
     if (processingRef.current) return
@@ -269,6 +350,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     setCandidates([])
     setError(null)
     setDebugInfo(null)
+    setDebugCaptures(null)
     processingRef.current = false
   }, [stopStream])
 
@@ -290,8 +372,11 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     videoRef,
     scanCount,
     debugInfo,
+    debugCaptures,
     openScanner,
     closeScanner,
     selectCandidate,
+    captureDebugFrame,
+    dismissDebugCaptures,
   }
 }
