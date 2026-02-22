@@ -33,13 +33,29 @@ const AUTO_MATCH_THRESHOLD = 14
 const DISAMBIG_THRESHOLD = 22
 
 /** How many images to load concurrently. */
-const BATCH_SIZE = 10
+const BATCH_SIZE = 8
+
+/** Timeout per image load (ms). */
+const IMAGE_TIMEOUT = 8000
+
+/**
+ * CORS proxy used when direct image loading fails.
+ * The Lorcast CDN doesn't serve CORS headers, so we need this to
+ * draw card images to canvas and read pixel data for hashing.
+ */
+const CORS_PROXY = 'https://corsproxy.io/?'
 
 export class CardImageDB {
   private entries: CardHashEntry[] = []
   private _loadedCount = 0
   private _totalCount = 0
   private aborted = false
+
+  /**
+   * Whether direct CORS loading failed and we've switched to proxy.
+   * Detected automatically on first image — avoids 2000+ failed requests.
+   */
+  private useProxy = false
 
   get loadedCount(): number { return this._loadedCount }
   get totalCount(): number { return this._totalCount }
@@ -58,16 +74,47 @@ export class CardImageDB {
     this.entries = []
     this._loadedCount = 0
     this.aborted = false
+    this.useProxy = false
 
     const withImages = cards.filter(c => c.imageUrl)
     this._totalCount = withImages.length
 
-    for (let i = 0; i < withImages.length; i += BATCH_SIZE) {
+    if (withImages.length === 0) return
+
+    // ── Detect CORS support on the first image ──────────────────────
+    const firstCard = withImages[0]!
+    try {
+      const entry = await this.loadAndHash(firstCard, false)
+      if (entry) {
+        this.entries.push(entry)
+        this._loadedCount++
+      }
+      // Direct CORS works!
+    } catch {
+      // Direct CORS blocked — switch to proxy for all images
+      this.useProxy = true
+      try {
+        const entry = await this.loadAndHash(firstCard, true)
+        if (entry) {
+          this.entries.push(entry)
+          this._loadedCount++
+        }
+      } catch {
+        // Even proxy failed — continue anyway, some images may work
+      }
+    }
+
+    onProgress?.(this._loadedCount, this._totalCount)
+
+    // ── Load remaining images in batches ─────────────────────────────
+    const remaining = withImages.slice(1)
+
+    for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
       if (this.aborted) break
 
-      const batch = withImages.slice(i, i + BATCH_SIZE)
+      const batch = remaining.slice(i, i + BATCH_SIZE)
       const results = await Promise.allSettled(
-        batch.map(card => this.loadAndHash(card)),
+        batch.map(card => this.loadAndHash(card, this.useProxy)),
       )
 
       for (const r of results) {
@@ -153,26 +200,41 @@ export class CardImageDB {
 
   // ── Private ─────────────────────────────────────────────────────────
 
-  private async loadAndHash(card: Card): Promise<CardHashEntry | null> {
-    try {
-      const img = await this.loadImage(card.imageUrl)
-      const canvas = document.createElement('canvas')
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0)
-      return { card, hash: computeDHash(canvas) }
-    } catch {
-      return null
-    }
+  private async loadAndHash(card: Card, viaProxy: boolean): Promise<CardHashEntry | null> {
+    const url = viaProxy
+      ? `${CORS_PROXY}${encodeURIComponent(card.imageUrl)}`
+      : card.imageUrl
+
+    const img = await this.loadImageElement(url)
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0)
+
+    // Verify we can actually read pixels (detects tainted canvas)
+    ctx.getImageData(0, 0, 1, 1)
+
+    return { card, hash: computeDHash(canvas) }
   }
 
-  private loadImage(url: string): Promise<HTMLImageElement> {
+  private loadImageElement(url: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      img.onload = () => resolve(img)
-      img.onerror = () => reject(new Error(`Failed to load image: ${url}`))
+
+      const timer = setTimeout(() => {
+        reject(new Error('Image load timeout'))
+      }, IMAGE_TIMEOUT)
+
+      img.onload = () => {
+        clearTimeout(timer)
+        resolve(img)
+      }
+      img.onerror = () => {
+        clearTimeout(timer)
+        reject(new Error('Image load failed'))
+      }
       img.src = url
     })
   }
