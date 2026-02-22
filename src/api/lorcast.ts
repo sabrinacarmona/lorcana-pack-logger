@@ -37,7 +37,10 @@ interface ApiCard {
   set?: { code?: string; name?: string }
   collector_number?: string | number
   cost?: number
-  ink?: string
+  /** Single ink for mono-ink cards (e.g. "Amber"). Null for dual-ink cards. */
+  ink?: string | null
+  /** Array of inks for dual-ink cards (e.g. ["Sapphire", "Steel"]). */
+  inks?: string[]
   rarity?: string
   type?: string | string[]
   classifications?: string | string[]
@@ -63,7 +66,9 @@ function mapApiCards(cards: ApiCard[]): RawCard[] {
       c.set?.name || '',
       String(c.collector_number || ''),
       c.cost || 0,
-      c.ink || '',
+      // Dual-ink cards have ink: null and inks: ["Sapphire", "Steel"].
+      // Store as "Sapphire/Steel" so the rest of the app can handle both formats.
+      c.ink || (Array.isArray(c.inks) && c.inks.length > 0 ? c.inks.join('/') : ''),
       c.rarity || '',
       combined,
       c.image_uris?.digital?.small || '',

@@ -128,4 +128,47 @@ describe('matchCardByCollectorNumber', () => {
     expect(result.card?.name).toBe('Elsa')
     expect(result.similarity).toBe(1)
   })
+
+  // ── Dual-ink card tests ────────────────────────────────────────────
+
+  it('matches dual-ink card when one detected ink overlaps', () => {
+    const dualInkCards = [
+      makeCard({ name: 'Maid Marian', version: 'Badminton Ace', setCode: '8', cn: '176', ink: 'Sapphire/Steel' }),
+      makeCard({ name: 'Other Card', setCode: '9', cn: '176', ink: 'Ruby' }),
+    ]
+    // Detector found Sapphire — should match the dual-ink card
+    const result = matchCardByCollectorNumber('176', dualInkCards, 'all', null, 'Sapphire', ['Sapphire'])
+    expect(result.card?.name).toBe('Maid Marian')
+  })
+
+  it('matches dual-ink card when both detected inks overlap', () => {
+    const dualInkCards = [
+      makeCard({ name: 'Maid Marian', version: 'Badminton Ace', setCode: '8', cn: '176', ink: 'Sapphire/Steel' }),
+      makeCard({ name: 'Other Card', setCode: '9', cn: '176', ink: 'Ruby' }),
+    ]
+    // Detector found both Sapphire and Steel
+    const result = matchCardByCollectorNumber('176', dualInkCards, 'all', null, 'Sapphire', ['Sapphire', 'Steel'])
+    expect(result.card?.name).toBe('Maid Marian')
+  })
+
+  it('narrows by ink when detected ink matches mono-ink card over dual-ink', () => {
+    const mixedCards = [
+      makeCard({ name: 'Dual Card', setCode: '8', cn: '50', ink: 'Amber/Emerald' }),
+      makeCard({ name: 'Mono Card', setCode: '9', cn: '50', ink: 'Ruby' }),
+    ]
+    // Detector found Ruby — should match the mono card
+    const result = matchCardByCollectorNumber('50', mixedCards, 'all', null, 'Ruby', ['Ruby'])
+    expect(result.card?.name).toBe('Mono Card')
+  })
+
+  it('returns both as candidates when both share a detected ink', () => {
+    const cards = [
+      makeCard({ name: 'Card A', setCode: '1', cn: '10', ink: 'Amber/Ruby' }),
+      makeCard({ name: 'Card B', setCode: '2', cn: '10', ink: 'Amber/Emerald' }),
+    ]
+    // Detector found Amber — both cards have Amber, so disambiguation needed
+    const result = matchCardByCollectorNumber('10', cards, 'all', null, 'Amber', ['Amber'])
+    expect(result.card).toBeNull()
+    expect(result.candidates).toHaveLength(2)
+  })
 })

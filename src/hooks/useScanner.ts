@@ -346,7 +346,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
 
       const inkResult = detectInkColor(inkCanvas)
       const useInk = inkResult.confidence >= MIN_INK_CONFIDENCE ? inkResult.ink : null
-      setLastDetectedInk(useInk)
+      const useInks = inkResult.confidence >= MIN_INK_CONFIDENCE ? inkResult.detectedInks : []
+      setLastDetectedInk(useInks.length > 0 ? useInks.join('/') : useInk)
 
       // ── 5. Match card ───────────────────────────────────────────
       // Check cooldown — skip if we recently matched this cn
@@ -361,9 +362,10 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         setFilterRef.current,
         parsed.total,
         useInk,
+        useInks,
       )
 
-      const method: MatchMethod = useInk ? 'cn+ink' : 'cn'
+      const method: MatchMethod = useInks.length > 0 ? 'cn+ink' : 'cn'
 
       const matchResultStr = result.card
         ? `${result.card.display} (${method})`
@@ -375,7 +377,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         videoRes: `${vw}x${vh}`,
         lastOcrText: ocrResult.text,
         lastOcrConfidence: ocrResult.confidence,
-        detectedInk: inkResult.ink || '-',
+        detectedInk: inkResult.detectedInks.length > 0 ? inkResult.detectedInks.join('/') : (inkResult.ink || '-'),
         inkConfidence: inkResult.confidence,
         parsedCn: `${parsed.cn}/${parsed.total || '?'}`,
         matchResult: matchResultStr,
@@ -387,7 +389,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         workerLatencyMs: Math.round(ocrLatency),
         mutexContended: ocrLatency > FRAME_INTERVAL,
         parsedCn: `${parsed.cn}/${parsed.total || '?'}`,
-        detectedInk: useInk,
+        detectedInk: useInks.length > 0 ? useInks.join('/') : useInk,
         matchResult: matchResultStr,
       })
 

@@ -18,12 +18,24 @@ export interface CnMatchResult {
  * the `total` (from "102/204") to narrow down to sets whose card count matches,
  * and only fall back to disambiguation if multiple sets still qualify.
  */
+/**
+ * Check whether any detected ink matches any of a card's inks.
+ * Handles both mono-ink ("Amber") and dual-ink ("Sapphire/Steel") formats.
+ */
+function inkOverlaps(cardInk: string, detectedInks: string[]): boolean {
+  if (!cardInk || detectedInks.length === 0) return false
+  const cardInks = cardInk.split('/')
+  return cardInks.some((ci) => detectedInks.includes(ci))
+}
+
 export function matchCardByCollectorNumber(
   cn: string,
   cards: Card[],
   setFilter: string,
   total?: string | null,
   detectedInk?: string | null,
+  /** All detected inks from the per-pixel classifier (e.g. ["Sapphire", "Steel"]). */
+  detectedInks?: string[],
 ): CnMatchResult {
   if (!cn) return { card: null, candidates: [], similarity: 0 }
 
@@ -56,10 +68,14 @@ export function matchCardByCollectorNumber(
   }
 
   // When we still have multiple matches, try narrowing by detected ink colour.
-  // Within a single set each ink+cn combination is unique, and across sets the
-  // ink often differs — so this resolves many ambiguous cases automatically.
-  if (detectedInk && matches.length > 1) {
-    const inkNarrow = matches.filter((c) => c.ink === detectedInk)
+  // Uses inkOverlaps() to handle dual-ink cards (e.g. "Sapphire/Steel")
+  // and multiple detected inks from per-pixel classification.
+  const allDetectedInks = detectedInks && detectedInks.length > 0
+    ? detectedInks
+    : detectedInk ? [detectedInk] : []
+
+  if (allDetectedInks.length > 0 && matches.length > 1) {
+    const inkNarrow = matches.filter((c) => inkOverlaps(c.ink, allDetectedInks))
     if (inkNarrow.length > 0) {
       matches = inkNarrow
     }
