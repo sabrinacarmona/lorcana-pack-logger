@@ -193,80 +193,30 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     setDebugCaptures(null)
   }, [])
 
+  /**
+   * processFrame — currently disabled.
+   *
+   * The histogram-based image matching has been proven unable to distinguish
+   * same-ink Lorcana cards (see scripts/histogram-experiment.ts).
+   * Keeping the frame loop alive so the camera stays on for debug captures,
+   * but not running any matching until we have a viable approach.
+   */
   const processFrame = useCallback(() => {
-    if (processingRef.current) return
     if (!videoRef.current || videoRef.current.readyState < 2) return
-    // Don't process frames while user is picking a candidate
-    if (scannerState === 'disambiguating') return
-    // Wait for at least some cards to be loaded
-    if (!imageDbRef.current.isReady) return
 
     const video = videoRef.current
     const vw = video.videoWidth
     const vh = video.videoHeight
 
-    if (!canvasRef.current) {
-      canvasRef.current = document.createElement('canvas')
-    }
-
-    processingRef.current = true
-
-    try {
-      // ── Crop to inner card area ──────────────────────────────────────
-      // The guide frame brackets are at: left 12%, right 12%, top 15%, bottom 18%
-      // Crop tighter (inset ~6% extra each side) to exclude table/background
-      // that bleeds into the guide area around the card edges.
-      const canvas = canvasRef.current
-      const cropLeft = Math.floor(vw * 0.18)
-      const cropTop = Math.floor(vh * 0.20)
-      const cropWidth = Math.floor(vw * 0.64)
-      const cropHeight = Math.floor(vh * 0.58)
-
-      canvas.width = cropWidth
-      canvas.height = cropHeight
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      ctx.drawImage(
-        video,
-        cropLeft, cropTop, cropWidth, cropHeight,
-        0, 0, cropWidth, cropHeight,
-      )
-
-      // ── Image matching ───────────────────────────────────────────────
-      const result = imageDbRef.current.findMatch(canvas)
-
-      const debug: ScannerDebugInfo = {
-        videoRes: `${vw}x${vh}`,
-        dbLoaded: imageDbRef.current.loadedCount,
-        dbTotal: imageDbRef.current.totalCount,
-        bestDist: result.bestDistance,
-        bestName: result.card?.display
-          ?? result.candidates[0]?.display
-          ?? '—',
-      }
-      setDebugInfo(debug)
-
-      if (result.card) {
-        const key = `${result.card.setCode}-${result.card.cn}`
-        const now = Date.now()
-        const lastSeen = cooldownRef.current.get(key) ?? 0
-        if (now - lastSeen >= COOLDOWN_MS) {
-          setMatchMethod('image')
-          acceptMatch(result.card)
-          return
-        }
-      } else if (result.candidates.length > 1) {
-        setMatchMethod('image')
-        setCandidates(result.candidates)
-        setScannerState('disambiguating')
-      }
-    } catch (err) {
-      console.warn('[scanner] frame error:', err)
-    } finally {
-      processingRef.current = false
-    }
-  }, [acceptMatch, scannerState])
+    // Just update resolution info — no matching
+    setDebugInfo({
+      videoRes: `${vw}x${vh}`,
+      dbLoaded: 0,
+      dbTotal: 0,
+      bestDist: Infinity,
+      bestName: 'matching disabled',
+    })
+  }, [])
 
   const openScanner = useCallback(async () => {
     setError(null)
@@ -297,27 +247,11 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
 
       setScannerState('streaming')
 
-      // ── Build image database in parallel ───────────────────────────
-      // Filter to relevant cards (selected set or all)
-      const relevantCards = setFilterRef.current === 'all'
-        ? cardsRef.current
-        : cardsRef.current.filter(c => c.setCode === setFilterRef.current)
+      // ── Image DB build disabled ────────────────────────────────────
+      // Histogram matching proven non-viable (see scripts/histogram-experiment.ts).
+      // Camera runs for debug capture only — no image DB needed.
 
-      // Build DB in background — don't await so camera starts immediately.
-      // processFrame skips matching until isReady = true.
-      imageDbRef.current.build(relevantCards, (loaded, total) => {
-        setDebugInfo(prev => ({
-          videoRes: prev?.videoRes ?? '?',
-          dbLoaded: loaded,
-          dbTotal: total,
-          bestDist: prev?.bestDist ?? Infinity,
-          bestName: prev?.bestName ?? '—',
-        }))
-      }).catch(err => {
-        console.warn('[scanner] DB build error:', err)
-      })
-
-      // ── Start frame capture loop ───────────────────────────────────
+      // ── Start frame capture loop (for debug info only) ─────────────
       intervalRef.current = setInterval(() => {
         processFrame()
       }, FRAME_INTERVAL)
