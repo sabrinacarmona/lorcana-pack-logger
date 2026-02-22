@@ -8,15 +8,17 @@ import { recordFrame, resetTelemetry, getState as getTelemetryState } from '../u
 import { preprocessForOcr } from '../utils/preprocess-ocr'
 
 /** How often to capture a frame and run the matching pipeline (ms).
- * Set to 1000ms to accommodate the larger crop + upscale preprocessing. */
-const FRAME_INTERVAL = 1000
+ * OCR takes ~340ms per frame, so 500ms gives a ~2 fps effective scan rate
+ * with the processingRef guard dropping frames that overlap. */
+const FRAME_INTERVAL = 500
 
 /** How long to prevent re-scanning the same card (ms).
  * Set high enough so the user has time to move the card away. */
 const COOLDOWN_MS = 8000
 
-/** How long to show the "matched" toast before resuming scanning (ms). */
-const MATCH_DISPLAY_MS = 2200
+/** How long to show the confirmed state before resuming scanning (ms).
+ * Kept short since the user already tapped a button to confirm. */
+const MATCH_DISPLAY_MS = 800
 
 /** Minimum OCR confidence — effectively disabled (set to 0).
  * The collector number parser already validates the pattern strictly with regex
