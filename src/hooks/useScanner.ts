@@ -143,13 +143,14 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     const debug: ScannerDebugInfo = { cnOcr: '', cnConf: 0, nameOcr: '', nameConf: 0, cnParsed: null }
 
     try {
-      // ── PRIMARY: Collector number — bottom 30% of frame ──────────────
-      // The CN sits at the very bottom of the card.  We scan a generous
-      // strip from 55-85% of the frame so it's captured regardless of how
-      // the user holds the card.
+      // ── PRIMARY: Collector number — bottom strip of frame ─────────────
+      // The CN sits at the very bottom of the card.  We scan 62-85% of the
+      // frame — narrow enough to exclude most card art & rules text (which
+      // cause false digit reads) but wide enough to catch the CN when the
+      // card isn't perfectly centred.
       const bottomCanvas = bottomCanvasRef.current
-      const bnCropTop = Math.floor(vh * 0.55)
-      const bnCropHeight = Math.floor(vh * 0.30)
+      const bnCropTop = Math.floor(vh * 0.62)
+      const bnCropHeight = Math.floor(vh * 0.23)
       const bnCropLeft = Math.floor(vw * 0.10)
       const bnCropWidth = Math.floor(vw * 0.80)
 

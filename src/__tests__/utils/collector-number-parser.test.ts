@@ -98,4 +98,26 @@ describe('parseCollectorNumber', () => {
     const result = parseCollectorNumber('999/999')
     expect(result).toEqual({ cn: '999', total: '999', raw: '999/999' })
   })
+
+  // --- Total validation (rejects noise) ---
+  it('rejects small total like "4/14" (noise from OCR)', () => {
+    expect(parseCollectorNumber('4/14')).toBeNull()
+  })
+
+  it('rejects "1/20" (noise — no Lorcana set has only 20 cards)', () => {
+    expect(parseCollectorNumber('1/20')).toBeNull()
+  })
+
+  it('rejects cn > total like "204/102" (inverted)', () => {
+    expect(parseCollectorNumber('204/102')).toBeNull()
+  })
+
+  it('accepts total at boundary: "50/100"', () => {
+    const result = parseCollectorNumber('50/100')
+    expect(result).toEqual({ cn: '50', total: '100', raw: '50/100' })
+  })
+
+  it('rejects total just below boundary: "50/99"', () => {
+    expect(parseCollectorNumber('50/99')).toBeNull()
+  })
 })

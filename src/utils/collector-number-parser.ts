@@ -8,6 +8,14 @@ export interface ParsedCollectorNumber {
 }
 
 /**
+ * Minimum set total to accept.  All Lorcana sets released so far contain 204+
+ * cards, so any OCR reading with a total below this threshold is noise — e.g.
+ * patterns like "4/14" that the digit-only whitelist picks up from card art,
+ * rules text, or binarisation artefacts.
+ */
+const MIN_TOTAL = 100
+
+/**
  * Extract a collector number from raw OCR text.
  *
  * Lorcana cards print the collector number in the format "123/204" at the
@@ -31,7 +39,11 @@ export function parseCollectorNumber(ocrText: string): ParsedCollectorNumber | n
   const slashMatch = cleaned.match(slashPattern)
   if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[0]) {
     const cn = normalise(slashMatch[1])
-    if (cn) {
+    const total = parseInt(slashMatch[2], 10)
+
+    // Validate: the total must be large enough to be a real Lorcana set, and
+    // the collector number must not exceed the total (e.g. reject "204/102").
+    if (cn && !isNaN(total) && total >= MIN_TOTAL && parseInt(cn, 10) <= total) {
       return { cn, total: slashMatch[2], raw: slashMatch[0] }
     }
   }
