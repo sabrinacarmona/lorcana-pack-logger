@@ -20,8 +20,8 @@ const MIN_CONFIDENCE = 60
 /** Lower threshold for collector number — regex validates, so we can be lenient. */
 const MIN_CN_CONFIDENCE = 15
 
-/** Scale factor applied to cropped images before OCR (bigger text = better accuracy). */
-const OCR_SCALE = 4
+/** Scale factor applied to cropped CN images before OCR (bigger text = better accuracy). */
+const CN_OCR_SCALE = 6
 
 interface UseScannerOptions {
   cards: Card[]
@@ -37,6 +37,7 @@ export interface ScannerDebugInfo {
   nameOcr: string
   nameConf: number
   cnParsed: string | null
+  videoRes: string
 }
 
 export interface UseScannerReturn {
@@ -140,7 +141,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     }
 
     processingRef.current = true
-    const debug: ScannerDebugInfo = { cnOcr: '', cnConf: 0, nameOcr: '', nameConf: 0, cnParsed: null }
+    const debug: ScannerDebugInfo = { cnOcr: '', cnConf: 0, nameOcr: '', nameConf: 0, cnParsed: null, videoRes: `${vw}x${vh}` }
 
     try {
       // ── PRIMARY: Collector number — bottom strip of frame ─────────────
@@ -155,37 +156,39 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       const bnCropWidth = Math.floor(vw * 0.80)
 
       // Scale the crop up so tiny text becomes readable by Tesseract
-      bottomCanvas.width = bnCropWidth * OCR_SCALE
-      bottomCanvas.height = bnCropHeight * OCR_SCALE
+      bottomCanvas.width = bnCropWidth * CN_OCR_SCALE
+      bottomCanvas.height = bnCropHeight * CN_OCR_SCALE
 
       const bnCtx = bottomCanvas.getContext('2d')
       if (bnCtx) {
         bnCtx.imageSmoothingEnabled = true
         bnCtx.imageSmoothingQuality = 'high'
-        // Moderate contrast — too high destroys detail on tiny text
-        bnCtx.filter = 'grayscale(1) contrast(2.2) brightness(1.2)'
+        // Gentle contrast — too aggressive destroys thin CN text on dark borders
+        bnCtx.filter = 'grayscale(1) contrast(1.8) brightness(1.3)'
         bnCtx.drawImage(
           video,
           bnCropLeft, bnCropTop, bnCropWidth, bnCropHeight,
-          0, 0, bnCropWidth * OCR_SCALE, bnCropHeight * OCR_SCALE,
+          0, 0, bnCropWidth * CN_OCR_SCALE, bnCropHeight * CN_OCR_SCALE,
         )
         bnCtx.filter = 'none'
 
         // Binarise + invert — Tesseract works best with DARK text on LIGHT
         // background.  Lorcana CN text is often light/silver on a dark card
         // border, so after binarisation we invert to get dark-on-white.
+        // Use a lower threshold (100) to preserve thin text strokes that
+        // would be destroyed at 128.
         const imgData = bnCtx.getImageData(0, 0, bottomCanvas.width, bottomCanvas.height)
         const px = imgData.data
         // Count dark pixels to detect polarity
         let darkCount = 0
         for (let i = 0; i < px.length; i += 4) {
-          if (px[i]! < 128) darkCount++
+          if (px[i]! < 100) darkCount++
         }
         // If image is mostly dark → text is light → need to invert
         // If image is mostly light → text is dark → keep as-is
         const shouldInvert = darkCount > px.length / 4 / 2
         for (let i = 0; i < px.length; i += 4) {
-          const bin = px[i]! > 128 ? 255 : 0
+          const bin = px[i]! > 100 ? 255 : 0
           const v = shouldInvert ? 255 - bin : bin
           px[i] = px[i + 1] = px[i + 2] = v
         }
@@ -301,8 +304,10 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          // Request high resolution — more pixels on the collector number
+          // means dramatically better OCR accuracy on tiny text.
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
       })
 

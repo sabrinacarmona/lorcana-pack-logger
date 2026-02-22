@@ -138,8 +138,20 @@ export const Header: React.FC<HeaderProps> = ({
             letterSpacing: '0.02em',
             flexShrink: 0,
             whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 6,
           }}>
             ✨ Pack Logger
+            <span style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 10,
+              fontWeight: 400,
+              color: 'var(--text-tertiary)',
+              letterSpacing: 0,
+            }}>
+              v{__APP_VERSION__}
+            </span>
           </span>
           <input
             className="session-name-input"

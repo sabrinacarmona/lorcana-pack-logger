@@ -109,6 +109,9 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               }}
             >
               Scan Card
+              <span style={{ fontSize: 10, fontWeight: 400, color: 'rgba(255,255,255,0.4)' }}>
+                v{__APP_VERSION__}
+              </span>
             </span>
             {scanCount > 0 && (
               <span
@@ -486,6 +489,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               pointerEvents: 'none',
             }}
           >
+            <div>Cam: <span style={{ color: '#aaf' }}>{debugInfo.videoRes || '?'}</span></div>
             <div>CN OCR: <span style={{ color: debugInfo.cnConf > 30 ? '#4f4' : '#f84' }}>{debugInfo.cnOcr || '—'}</span> ({debugInfo.cnConf}%)</div>
             {debugInfo.cnParsed && <div>CN parsed: <span style={{ color: '#4ff' }}>#{debugInfo.cnParsed}</span></div>}
             <div>Name OCR: <span style={{ color: debugInfo.nameConf > 50 ? '#4f4' : '#f84' }}>{debugInfo.nameOcr?.slice(0, 40) || '—'}</span> ({debugInfo.nameConf}%)</div>
