@@ -5,9 +5,11 @@ import { parseCollectorNumber } from '../utils/collector-number-parser'
 import { matchCardByCollectorNumber } from '../utils/card-cn-matcher'
 import { detectInkColor } from '../utils/ink-detector'
 import { recordFrame, resetTelemetry, getState as getTelemetryState } from '../utils/telemetry'
+import { preprocessForOcr } from '../utils/preprocess-ocr'
 
-/** How often to capture a frame and run the matching pipeline (ms). */
-const FRAME_INTERVAL = 400
+/** How often to capture a frame and run the matching pipeline (ms).
+ * Increased from 400 → 600 to accommodate the 3x upscale preprocessing. */
+const FRAME_INTERVAL = 600
 
 /** How long to prevent re-scanning the same card (ms). */
 const COOLDOWN_MS = 2000
@@ -42,6 +44,11 @@ const CN_REGION_LEFT = 0.02
 const CN_REGION_TOP = 0.84
 const CN_REGION_HEIGHT = 0.16
 const CN_REGION_WIDTH = 0.55
+
+/** Upscale factor for the CN crop before OCR.
+ * Raw crop is ~380×170 px — text is only ~15px tall and Tesseract can't read it.
+ * 3x upscale → ~1140×510 px with ~45px text — well within Tesseract's range. */
+const OCR_UPSCALE = 3
 
 // Ink colour region — sample from the card's name banner area.
 // The banner behind "PACHA / Trekmate" is a large solid area of the ink colour.
@@ -379,13 +386,16 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         },
       }
 
-      cnCanvas.width = cnSw
-      cnCanvas.height = cnSh
+      // Draw CN crop at 3x scale — text goes from ~15px to ~45px tall
+      cnCanvas.width = cnSw * OCR_UPSCALE
+      cnCanvas.height = cnSh * OCR_UPSCALE
+      cnCtx.imageSmoothingEnabled = true
+      cnCtx.imageSmoothingQuality = 'high'
+      cnCtx.drawImage(video, cnSx, cnSy, cnSw, cnSh, 0, 0, cnCanvas.width, cnCanvas.height)
 
-      // Grayscale + contrast boost for OCR
-      cnCtx.filter = 'grayscale(1) contrast(1.8) brightness(1.1)'
-      cnCtx.drawImage(video, cnSx, cnSy, cnSw, cnSh, 0, 0, cnSw, cnSh)
-      cnCtx.filter = 'none'
+      // Preprocess: grayscale → auto-invert → Otsu binarization
+      // Produces clean black text on white background for Tesseract
+      preprocessForOcr(cnCanvas)
 
       // ── 2. Run OCR ──────────────────────────────────────────────
       const ocrStart = performance.now()
@@ -611,6 +621,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         GUIDE: { x: GUIDE_X, y: GUIDE_Y, w: GUIDE_W, h: GUIDE_H },
         CN_REGION: { left: CN_REGION_LEFT, top: CN_REGION_TOP, w: CN_REGION_WIDTH, h: CN_REGION_HEIGHT },
         INK_REGION: { left: INK_REGION_LEFT, top: INK_REGION_TOP, size: INK_REGION_SIZE },
+        OCR_UPSCALE,
         MIN_CONFIDENCE,
         MIN_INK_CONFIDENCE,
       },
