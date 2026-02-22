@@ -375,75 +375,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               </div>
             )}
 
-            {isMatched && lastMatch && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 8,
-                  animation: 'scannerCardBanner 300ms ease-out',
-                }}
-              >
-                {lastMatch.imageUrl && (
-                  <img
-                    src={lastMatch.imageUrl}
-                    alt={lastMatch.display}
-                    style={{
-                      width: 60,
-                      height: 84,
-                      borderRadius: 6,
-                      objectFit: 'cover',
-                      border: '2px solid rgba(52,199,89,0.6)',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
-                    }}
-                  />
-                )}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    background: 'rgba(52,199,89,0.2)',
-                    border: '1px solid rgba(52,199,89,0.4)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '8px 14px',
-                  }}
-                >
-                  <InkDot ink={lastMatch.ink} />
-                  <span
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: '#fff',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    {lastMatch.display}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: 'rgba(255,255,255,0.6)',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    #{lastMatch.cn}
-                  </span>
-                  <RarityBadge rarity={lastMatch.rarity} />
-                </div>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--success)',
-                    fontWeight: 500,
-                    fontFamily: "'Outfit', sans-serif",
-                  }}
-                >
-                  Matched by {matchMethod === 'cn+ink' ? 'CN + ink' : 'collector #'} · #{lastMatch.cn}
-                </span>
-              </div>
-            )}
+            {/* Match confirmation is shown as a bottom toast instead */}
 
             {scannerState === 'error' && (
               <div
@@ -505,6 +437,106 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             </div>
           )}
         </div>
+
+        {/* ── Match toast — slides up from bottom, doesn't block the camera ── */}
+        {isMatched && lastMatch && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'rgba(0,0,0,0.85)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              borderRadius: '20px 20px 0 0',
+              padding: '16px 16px',
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+              pointerEvents: 'auto',
+              animation: 'scannerCardBanner 300ms ease-out',
+              zIndex: 3,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              {/* Green checkmark */}
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: 'rgba(52,199,89,0.2)',
+                  border: '2px solid rgba(52,199,89,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  fontSize: 18,
+                }}
+              >
+                ✓
+              </div>
+
+              {/* Card thumbnail */}
+              {lastMatch.imageUrl && (
+                <img
+                  src={lastMatch.imageUrl}
+                  alt={lastMatch.display}
+                  style={{
+                    width: 40,
+                    height: 56,
+                    borderRadius: 5,
+                    objectFit: 'cover',
+                    border: '1.5px solid rgba(52,199,89,0.5)',
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+
+              {/* Card info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <InkDot ink={lastMatch.ink} />
+                  <span
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#fff',
+                      fontFamily: "'Outfit', sans-serif",
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {lastMatch.display}
+                  </span>
+                  <RarityBadge rarity={lastMatch.rarity} />
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.5)',
+                    fontFamily: "'Outfit', sans-serif",
+                    marginTop: 2,
+                  }}
+                >
+                  {lastMatch.setName} · #{lastMatch.cn} · {matchMethod === 'cn+ink' ? 'CN + ink' : 'collector #'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Disambiguation bottom sheet — separate from guide frame so it can scroll */}
         {isDisambiguating && candidates.length > 0 && (

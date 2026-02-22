@@ -11,11 +11,12 @@ import { preprocessForOcr } from '../utils/preprocess-ocr'
  * Set to 1000ms to accommodate the larger crop + upscale preprocessing. */
 const FRAME_INTERVAL = 1000
 
-/** How long to prevent re-scanning the same card (ms). */
-const COOLDOWN_MS = 2000
+/** How long to prevent re-scanning the same card (ms).
+ * Set high enough so the user has time to move the card away. */
+const COOLDOWN_MS = 8000
 
-/** How long to show the "matched" state before resuming scanning (ms). */
-const MATCH_DISPLAY_MS = 1500
+/** How long to show the "matched" toast before resuming scanning (ms). */
+const MATCH_DISPLAY_MS = 2200
 
 /** Minimum OCR confidence — effectively disabled (set to 0).
  * The collector number parser already validates the pattern strictly with regex
