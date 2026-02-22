@@ -7,8 +7,10 @@ const CACHE_DURATION_MS = 86400000 // 24 hours
 /**
  * Increment this when the RawCard tuple structure changes.
  * Stale caches with a different version are silently invalidated.
+ *
+ * v2 → v3: dual-ink cards now store "Sapphire/Steel" instead of "".
  */
-const CACHE_VERSION = 2
+const CACHE_VERSION = 3
 
 interface CardCache {
   version: number
