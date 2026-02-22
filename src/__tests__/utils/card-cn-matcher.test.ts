@@ -85,13 +85,47 @@ describe('matchCardByCollectorNumber', () => {
     expect(result.similarity).toBe(0)
   })
 
-  it('limits disambiguation candidates to 4', () => {
-    // Create 6 cards with the same cn in different sets
-    const manyCards = Array.from({ length: 6 }, (_, i) =>
+  it('limits disambiguation candidates to 6', () => {
+    // Create 8 cards with the same cn in different sets
+    const manyCards = Array.from({ length: 8 }, (_, i) =>
       makeCard({ name: `Card ${i}`, setCode: String(i + 1), cn: '50' }),
     )
     const result = matchCardByCollectorNumber('50', manyCards, 'all')
     expect(result.card).toBeNull()
-    expect(result.candidates).toHaveLength(4)
+    expect(result.candidates).toHaveLength(6)
+  })
+
+  it('uses total to narrow multi-set matches to the right set', () => {
+    // Two cards with cn "102" in different sets
+    // Set "1" has 204 cards (has a card with cn "204"), set "3" has 100 cards (no cn "204")
+    const cardsWithTotals = [
+      makeCard({ name: 'Pacha', version: 'Trekmate', setCode: '1', cn: '102' }),
+      makeCard({ name: 'Stolen Scimitar', setCode: '3', cn: '102' }),
+      // The "total" card — proves set "1" has at least 204 cards
+      makeCard({ name: 'Last Card', setCode: '1', cn: '204' }),
+    ]
+    const result = matchCardByCollectorNumber('102', cardsWithTotals, 'all', '204')
+    expect(result.card?.name).toBe('Pacha')
+    expect(result.candidates).toHaveLength(0)
+    expect(result.similarity).toBe(1)
+  })
+
+  it('falls back to disambiguation when total matches multiple sets', () => {
+    // Both sets have a card at cn "204"
+    const cardsWithTotals = [
+      makeCard({ name: 'Pacha', setCode: '1', cn: '102' }),
+      makeCard({ name: 'Stolen Scimitar', setCode: '3', cn: '102' }),
+      makeCard({ name: 'Last A', setCode: '1', cn: '204' }),
+      makeCard({ name: 'Last B', setCode: '3', cn: '204' }),
+    ]
+    const result = matchCardByCollectorNumber('102', cardsWithTotals, 'all', '204')
+    expect(result.card).toBeNull()
+    expect(result.candidates).toHaveLength(2)
+  })
+
+  it('ignores total when set filter is active', () => {
+    const result = matchCardByCollectorNumber('42', testCards, '1', '999')
+    expect(result.card?.name).toBe('Elsa')
+    expect(result.similarity).toBe(1)
   })
 })

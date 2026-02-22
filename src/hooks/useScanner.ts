@@ -192,6 +192,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
               parsed.cn,
               cardsRef.current,
               setFilterRef.current,
+              parsed.total,
             )
             if (cnMatch.card) {
               const key = `${cnMatch.card.setCode}-${cnMatch.card.cn}`
