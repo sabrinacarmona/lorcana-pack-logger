@@ -3,6 +3,8 @@ export interface ParsedCollectorNumber {
   cn: string
   /** Total cards in the set if found, e.g. "204" */
   total: string | null
+  /** Set number parsed from the footer (e.g. "7" from "130/204 · EN · 7"), or null. */
+  setNumber: string | null
   /** The raw matched text from the OCR output */
   raw: string
 }
@@ -16,11 +18,15 @@ export interface ParsedCollectorNumber {
 const MIN_TOTAL = 100
 
 /**
- * Extract a collector number from raw OCR text.
+ * Extract a collector number (and optionally the set number) from raw OCR text.
  *
- * Lorcana cards print the collector number in the format "123/204" at the
- * bottom of each card.  OCR output may include noise, spacing variations,
- * or common misreads (e.g. 'l' for '1', 'O' for '0').
+ * Lorcana cards print the collector info in the format:
+ *     130/204 · EN · 7
+ * where 130 is the collector number, 204 is the set total, EN is the language,
+ * and 7 is the set number.
+ *
+ * The set number is critical for disambiguation — CN 130 may exist in every
+ * set, but CN 130 + set 7 uniquely identifies one card.
  *
  * Returns the first valid collector number found, or null if none detected.
  */
@@ -44,7 +50,24 @@ export function parseCollectorNumber(ocrText: string): ParsedCollectorNumber | n
     // Validate: the total must be large enough to be a real Lorcana set, and
     // the collector number must not exceed the total (e.g. reject "204/102").
     if (cn && !isNaN(total) && total >= MIN_TOTAL && parseInt(cn, 10) <= total) {
-      return { cn, total: slashMatch[2], raw: slashMatch[0] }
+      // ── Extract set number from ORIGINAL text (before OCR substitutions) ──
+      // Using the original avoids false digits from I→1, O→0, etc.
+      // The footer format is: CN/TOTAL <sep> LANG <sep> SET
+      // We look for a 1-2 digit number in the 30 chars after the CN match.
+      let setNumber: string | null = null
+      const matchEnd = (slashMatch.index ?? 0) + slashMatch[0].length
+      const afterCn = ocrText.substring(matchEnd, matchEnd + 30)
+      const digitMatches = [...afterCn.matchAll(/(\d{1,2})/g)]
+
+      if (digitMatches.length > 0 && digitMatches[0] && digitMatches[0][1]) {
+        const sn = parseInt(digitMatches[0][1], 10)
+        // Reasonable set number range (Lorcana sets 1–20+)
+        if (sn >= 1 && sn <= 30) {
+          setNumber = String(sn)
+        }
+      }
+
+      return { cn, total: slashMatch[2], setNumber, raw: slashMatch[0] }
     }
   }
 

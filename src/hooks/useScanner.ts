@@ -182,6 +182,10 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const [lastOcrText, setLastOcrText] = useState('')
   const [lastDetectedInk, setLastDetectedInk] = useState<string | null>(null)
 
+  // Mirror scanner state in a ref so processFrame can check it synchronously
+  const stateRef = useRef(scannerState)
+  stateRef.current = scannerState
+
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -327,17 +331,19 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   }, [])
 
   /**
-   * processFrame — CN + ink dot matching pipeline.
+   * processFrame — CN + set number + ink dot matching pipeline.
    *
    * 1. Crop the collector number region from the camera feed
-   * 2. Run OCR (Tesseract SPARSE_TEXT mode with digit whitelist)
-   * 3. Parse the "123/204" pattern
+   * 2. Run OCR (Tesseract SINGLE_BLOCK mode)
+   * 3. Parse the "130/204 EN 7" pattern (CN + total + set number)
    * 4. Crop the ink dot region and detect the colour
-   * 5. Look up the card by collector number + ink + set filter
+   * 5. Look up the card by CN + set number + ink + set filter
    */
   const processFrame = useCallback(async () => {
     if (!videoRef.current || videoRef.current.readyState < 2) return
     if (processingRef.current) return
+    // Don't process while user is picking a candidate or viewing a match
+    if (stateRef.current === 'disambiguating' || stateRef.current === 'matched') return
     processingRef.current = true
 
     try {
@@ -490,6 +496,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         parsed.total,
         useInk,
         useInks,
+        parsed.setNumber,
       )
 
       const method: MatchMethod = useInks.length > 0 ? 'cn+ink' : 'cn'
@@ -506,7 +513,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         lastOcrConfidence: ocrResult.confidence,
         detectedInk: inkResult.detectedInks.length > 0 ? inkResult.detectedInks.join('/') : (inkResult.ink || '-'),
         inkConfidence: inkResult.confidence,
-        parsedCn: `${parsed.cn}/${parsed.total || '?'}`,
+        parsedCn: `${parsed.cn}/${parsed.total || '?'}${parsed.setNumber ? ' set:' + parsed.setNumber : ''}`,
         matchResult: matchResultStr,
       })
 
@@ -515,7 +522,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         ocrText: ocrResult.text,
         workerLatencyMs: Math.round(ocrLatency),
         mutexContended: ocrLatency > FRAME_INTERVAL,
-        parsedCn: `${parsed.cn}/${parsed.total || '?'}`,
+        parsedCn: `${parsed.cn}/${parsed.total || '?'}${parsed.setNumber ? ' set:' + parsed.setNumber : ''}`,
         detectedInk: useInks.length > 0 ? useInks.join('/') : useInk,
         matchResult: matchResultStr,
       })

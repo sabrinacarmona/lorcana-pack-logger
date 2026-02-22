@@ -129,6 +129,40 @@ describe('matchCardByCollectorNumber', () => {
     expect(result.similarity).toBe(1)
   })
 
+  // ── Set number narrowing tests ──────────────────────────────────────
+
+  it('narrows by set number when CN exists in multiple sets', () => {
+    const result = matchCardByCollectorNumber('1', testCards, 'all', null, null, [], '3')
+    expect(result.card?.name).toBe('Stitch')
+    expect(result.candidates).toHaveLength(0)
+  })
+
+  it('narrows by set number even when total matches multiple sets', () => {
+    const cardsWithTotals = [
+      makeCard({ name: 'Pacha', setCode: '1', cn: '102' }),
+      makeCard({ name: 'Stolen Scimitar', setCode: '3', cn: '102' }),
+      makeCard({ name: 'Last A', setCode: '1', cn: '204' }),
+      makeCard({ name: 'Last B', setCode: '3', cn: '204' }),
+    ]
+    // Both sets have total 204, but set number "1" narrows to Pacha
+    const result = matchCardByCollectorNumber('102', cardsWithTotals, 'all', '204', null, [], '1')
+    expect(result.card?.name).toBe('Pacha')
+    expect(result.candidates).toHaveLength(0)
+  })
+
+  it('ignores set number when set filter is active', () => {
+    // Set filter takes priority — set number is redundant
+    const result = matchCardByCollectorNumber('1', testCards, '1', null, null, [], '3')
+    expect(result.card?.name).toBe('Ariel')
+  })
+
+  it('falls back to disambiguation if set number does not match any set', () => {
+    const result = matchCardByCollectorNumber('1', testCards, 'all', null, null, [], '99')
+    // No set code "99" exists — fall back to showing all candidates
+    expect(result.card).toBeNull()
+    expect(result.candidates).toHaveLength(2)
+  })
+
   // ── Dual-ink card tests ────────────────────────────────────────────
 
   it('matches dual-ink card when one detected ink overlaps', () => {

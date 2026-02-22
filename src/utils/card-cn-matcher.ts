@@ -10,14 +10,18 @@ export interface CnMatchResult {
 }
 
 /**
- * Match a card by its collector number.
+ * Match a card by its collector number, set number, and optionally ink colour.
  *
- * When a set filter is active, collector number + set code uniquely identify a
- * card — giving us a 100 % exact match with no fuzzy logic.  When set filter
- * is "all", the same collector number may exist in multiple sets, so we use
- * the `total` (from "102/204") to narrow down to sets whose card count matches,
- * and only fall back to disambiguation if multiple sets still qualify.
+ * Narrowing priority:
+ * 1. Set filter (if active) — exact set code match
+ * 2. Set total (from "102/204") — exclude sets with wrong card count
+ * 3. Set number (from "EN · 7") — the set code printed on the card footer
+ * 4. Ink colour — per-pixel detection of the card's ink
+ *
+ * The set number (step 3) is the most reliable disambiguator since it's
+ * printed directly on the card and read by OCR alongside the collector number.
  */
+
 /**
  * Check whether any detected ink matches any of a card's inks.
  * Handles both mono-ink ("Amber") and dual-ink ("Sapphire/Steel") formats.
@@ -36,6 +40,8 @@ export function matchCardByCollectorNumber(
   detectedInk?: string | null,
   /** All detected inks from the per-pixel classifier (e.g. ["Sapphire", "Steel"]). */
   detectedInks?: string[],
+  /** Set number parsed from the card footer (e.g. "7" from "EN · 7"). */
+  setNumber?: string | null,
 ): CnMatchResult {
   if (!cn) return { card: null, candidates: [], similarity: 0 }
 
@@ -45,6 +51,7 @@ export function matchCardByCollectorNumber(
 
   let matches = pool.filter((c) => c.cn === cn)
 
+  // ── Narrow by set total ───────────────────────────────────────────────
   // When set filter is "all" and we parsed the total (e.g. "204" from
   // "102/204"), narrow to sets that actually contain a card numbered at the
   // total.  A set with 204 regular cards will have a card whose cn === "204",
@@ -67,6 +74,17 @@ export function matchCardByCollectorNumber(
     }
   }
 
+  // ── Narrow by set number (from OCR: "EN · 7" → setNumber = "7") ──────
+  // This is the most reliable disambiguator: the set number is printed on
+  // the card and directly matches the set code in the database.
+  if (setNumber && matches.length > 1) {
+    const setNarrow = matches.filter((c) => c.setCode === setNumber)
+    if (setNarrow.length > 0) {
+      matches = setNarrow
+    }
+  }
+
+  // ── Narrow by ink colour ──────────────────────────────────────────────
   // When we still have multiple matches, try narrowing by detected ink colour.
   // Uses inkOverlaps() to handle dual-ink cards (e.g. "Sapphire/Steel")
   // and multiple detected inks from per-pixel classification.
