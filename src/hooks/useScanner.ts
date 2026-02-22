@@ -131,14 +131,15 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     processingRef.current = true
 
     try {
-      // ── Crop to card guide area ──────────────────────────────────────
-      // The guide frame is: left 12%, right 12%, top 15%, bottom 18%
-      // So the card area is roughly 76% wide × 67% tall, centered.
+      // ── Crop to inner card area ──────────────────────────────────────
+      // The guide frame brackets are at: left 12%, right 12%, top 15%, bottom 18%
+      // Crop tighter (inset ~6% extra each side) to exclude table/background
+      // that bleeds into the guide area around the card edges.
       const canvas = canvasRef.current
-      const cropLeft = Math.floor(vw * 0.12)
-      const cropTop = Math.floor(vh * 0.15)
-      const cropWidth = Math.floor(vw * 0.76)
-      const cropHeight = Math.floor(vh * 0.67)
+      const cropLeft = Math.floor(vw * 0.18)
+      const cropTop = Math.floor(vh * 0.20)
+      const cropWidth = Math.floor(vw * 0.64)
+      const cropHeight = Math.floor(vh * 0.58)
 
       canvas.width = cropWidth
       canvas.height = cropHeight

@@ -1,6 +1,10 @@
 /**
- * Card Image Database — builds a perceptual hash index of card images
+ * Card Image Database — builds a colour-histogram index of card images
  * and matches camera frames against it.
+ *
+ * Uses 3D RGB colour histograms instead of spatial hashing (dHash).
+ * Colour histograms are position-invariant and much more robust for
+ * matching phone photos of physical cards against digital references.
  *
  * Usage:
  *   const db = new CardImageDB()
@@ -8,12 +12,12 @@
  *   const result = db.findMatch(cameraFrameCanvas)
  */
 
-import { computeDHash, hammingDistance } from './image-hash'
+import { computeColorHistogram, histogramDistance } from './image-hash'
 import type { Card } from '../types'
 
-interface CardHashEntry {
+interface CardHistEntry {
   card: Card
-  hash: string
+  hist: number[]
 }
 
 export interface ImageMatchResult {
@@ -24,13 +28,16 @@ export interface ImageMatchResult {
 }
 
 /**
- * Hamming-distance thresholds (out of 64 bits):
+ * Chi-squared distance thresholds (range ~0–2):
  * ≤ AUTO_MATCH  → instant match (strong confidence)
  * ≤ DISAMBIG    → show disambiguation with close candidates
  * > DISAMBIG    → no match
+ *
+ * These are initial guesses — the debug panel shows live distances
+ * so we can tune based on real-world testing.
  */
-const AUTO_MATCH_THRESHOLD = 14
-const DISAMBIG_THRESHOLD = 22
+const AUTO_MATCH_THRESHOLD = 0.35
+const DISAMBIG_THRESHOLD = 0.65
 
 /** How many images to load concurrently. */
 const BATCH_SIZE = 8
@@ -41,19 +48,19 @@ const IMAGE_TIMEOUT = 8000
 /**
  * CORS proxy used when direct image loading fails.
  * The Lorcast CDN doesn't serve CORS headers, so we need this to
- * draw card images to canvas and read pixel data for hashing.
+ * draw card images to canvas and read pixel data for histograms.
  */
 const CORS_PROXY = 'https://corsproxy.io/?'
 
 export class CardImageDB {
-  private entries: CardHashEntry[] = []
+  private entries: CardHistEntry[] = []
   private _loadedCount = 0
   private _totalCount = 0
   private aborted = false
 
   /**
    * Whether direct CORS loading failed and we've switched to proxy.
-   * Detected automatically on first image — avoids 2000+ failed requests.
+   * Detected automatically on first image — avoids N failed requests.
    */
   private useProxy = false
 
@@ -62,7 +69,7 @@ export class CardImageDB {
   get isReady(): boolean { return this._loadedCount > 0 }
 
   /**
-   * Load card images and compute perceptual hashes.
+   * Load card images and compute colour histograms.
    * Loads in batches to avoid saturating the network.
    * Calls `onProgress` after each batch completes.
    */
@@ -84,23 +91,22 @@ export class CardImageDB {
     // ── Detect CORS support on the first image ──────────────────────
     const firstCard = withImages[0]!
     try {
-      const entry = await this.loadAndHash(firstCard, false)
+      const entry = await this.loadAndCompute(firstCard, false)
       if (entry) {
         this.entries.push(entry)
         this._loadedCount++
       }
-      // Direct CORS works!
     } catch {
       // Direct CORS blocked — switch to proxy for all images
       this.useProxy = true
       try {
-        const entry = await this.loadAndHash(firstCard, true)
+        const entry = await this.loadAndCompute(firstCard, true)
         if (entry) {
           this.entries.push(entry)
           this._loadedCount++
         }
       } catch {
-        // Even proxy failed — continue anyway, some images may work
+        // Even proxy failed — continue anyway
       }
     }
 
@@ -114,7 +120,7 @@ export class CardImageDB {
 
       const batch = remaining.slice(i, i + BATCH_SIZE)
       const results = await Promise.allSettled(
-        batch.map(card => this.loadAndHash(card, this.useProxy)),
+        batch.map(card => this.loadAndCompute(card, this.useProxy)),
       )
 
       for (const r of results) {
@@ -136,11 +142,11 @@ export class CardImageDB {
       return { card: null, candidates: [], bestDistance: Infinity, dbSize: 0 }
     }
 
-    const frameHash = computeDHash(frameCanvas)
+    const frameHist = computeColorHistogram(frameCanvas)
 
-    // Score all entries by Hamming distance
+    // Score all entries by chi-squared distance
     const scored = this.entries
-      .map(e => ({ card: e.card, dist: hammingDistance(frameHash, e.hash) }))
+      .map(e => ({ card: e.card, dist: histogramDistance(frameHist, e.hist) }))
       .sort((a, b) => a.dist - b.dist)
 
     const best = scored[0]!
@@ -158,7 +164,7 @@ export class CardImageDB {
     // Weak match — show disambiguation
     if (best.dist <= DISAMBIG_THRESHOLD) {
       const close = scored
-        .filter(s => s.dist <= DISAMBIG_THRESHOLD + 4)
+        .filter(s => s.dist <= DISAMBIG_THRESHOLD * 1.15)
         .slice(0, 6)
 
       if (close.length === 1) {
@@ -200,7 +206,7 @@ export class CardImageDB {
 
   // ── Private ─────────────────────────────────────────────────────────
 
-  private async loadAndHash(card: Card, viaProxy: boolean): Promise<CardHashEntry | null> {
+  private async loadAndCompute(card: Card, viaProxy: boolean): Promise<CardHistEntry | null> {
     const url = viaProxy
       ? `${CORS_PROXY}${encodeURIComponent(card.imageUrl)}`
       : card.imageUrl
@@ -215,7 +221,7 @@ export class CardImageDB {
     // Verify we can actually read pixels (detects tainted canvas)
     ctx.getImageData(0, 0, 1, 1)
 
-    return { card, hash: computeDHash(canvas) }
+    return { card, hist: computeColorHistogram(canvas) }
   }
 
   private loadImageElement(url: string): Promise<HTMLImageElement> {

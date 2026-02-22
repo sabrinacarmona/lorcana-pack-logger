@@ -1,52 +1,74 @@
 /**
- * Perceptual image hashing utilities for card matching.
+ * Image descriptor utilities for card matching.
  *
- * Uses dHash (difference hash) which computes relative brightness
- * gradients — robust to minor scaling, brightness, and contrast changes.
+ * Uses a 3D RGB color histogram — robust to position/angle changes and
+ * much more effective than spatial hashing (dHash) for matching phone
+ * photos of physical cards against clean digital reference images.
  */
+
+/** Number of bins per RGB channel.  4³ = 64 total bins. */
+const BINS = 4
+
+/** Standard size to resize images before computing descriptors. */
+const SAMPLE_SIZE = 64
 
 /**
- * Compute a difference hash (dHash) for an image source.
+ * Compute a 3D color histogram for an image.
  *
- * 1. Resize to 9×8 grayscale (9 wide so we get 8 horizontal differences)
- * 2. For each pixel, compare brightness to its right neighbour
- * 3. Brighter → 1, darker → 0
- * 4. Returns a 64-character string of "0"s and "1"s
+ * Divides the RGB colour cube into BINS³ cells and counts what fraction
+ * of pixels fall into each cell.  This captures the overall colour
+ * palette of the image regardless of spatial layout.
+ *
+ * Returns a normalised float array of length BINS³ (64) that sums to 1.
  */
-export function computeDHash(source: HTMLCanvasElement | HTMLImageElement): string {
-  const W = 9
-  const H = 8
+export function computeColorHistogram(
+  source: HTMLCanvasElement | HTMLImageElement,
+): number[] {
   const tmp = document.createElement('canvas')
-  tmp.width = W
-  tmp.height = H
+  tmp.width = SAMPLE_SIZE
+  tmp.height = SAMPLE_SIZE
   const ctx = tmp.getContext('2d')!
-  ctx.filter = 'grayscale(1)'
-  ctx.drawImage(source, 0, 0, W, H)
-  ctx.filter = 'none'
+  ctx.drawImage(source, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE)
 
-  const px = ctx.getImageData(0, 0, W, H).data
-  const bits: string[] = []
+  const px = ctx.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data
+  const totalBins = BINS * BINS * BINS
+  const hist = new Array<number>(totalBins).fill(0)
+  const binSize = 256 / BINS
 
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W - 1; x++) {
-      const left = px[(y * W + x) * 4]!
-      const right = px[(y * W + x + 1) * 4]!
-      bits.push(left > right ? '1' : '0')
+  let pixelCount = 0
+  for (let i = 0; i < px.length; i += 4) {
+    const rBin = Math.min(Math.floor(px[i]! / binSize), BINS - 1)
+    const gBin = Math.min(Math.floor(px[i + 1]! / binSize), BINS - 1)
+    const bBin = Math.min(Math.floor(px[i + 2]! / binSize), BINS - 1)
+    hist[rBin * BINS * BINS + gBin * BINS + bBin]!++
+    pixelCount++
+  }
+
+  // Normalise so the histogram sums to 1
+  if (pixelCount > 0) {
+    for (let i = 0; i < totalBins; i++) {
+      hist[i] = hist[i]! / pixelCount
     }
   }
 
-  return bits.join('')
+  return hist
 }
 
 /**
- * Hamming distance between two equal-length binary hash strings.
- * Returns the number of differing bits (0 = identical, 64 = opposite).
+ * Chi-squared distance between two normalised histograms.
+ *
+ * Range: 0 (identical) to ~2 (completely different).
+ * More discriminative than Euclidean distance for histogram comparison.
  */
-export function hammingDistance(a: string, b: string): number {
+export function histogramDistance(a: number[], b: number[]): number {
   if (a.length !== b.length) return Infinity
   let dist = 0
   for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) dist++
+    const sum = a[i]! + b[i]!
+    if (sum > 1e-10) {
+      const diff = a[i]! - b[i]!
+      dist += (diff * diff) / sum
+    }
   }
   return dist
 }

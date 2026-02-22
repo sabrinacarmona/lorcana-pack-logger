@@ -510,7 +510,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             }}
           >
             <div>Cam: <span style={{ color: '#aaf' }}>{debugInfo.videoRes || '?'}</span> | DB: <span style={{ color: debugInfo.dbLoaded >= debugInfo.dbTotal ? '#4f4' : '#ff4' }}>{debugInfo.dbLoaded}/{debugInfo.dbTotal}</span></div>
-            <div>Best: <span style={{ color: debugInfo.bestDist <= 14 ? '#4f4' : debugInfo.bestDist <= 22 ? '#ff4' : '#f84' }}>dist={debugInfo.bestDist === Infinity ? '∞' : debugInfo.bestDist}</span> → {debugInfo.bestName}</div>
+            <div>Best: <span style={{ color: debugInfo.bestDist <= 0.35 ? '#4f4' : debugInfo.bestDist <= 0.65 ? '#ff4' : '#f84' }}>dist={debugInfo.bestDist === Infinity ? '∞' : debugInfo.bestDist.toFixed(3)}</span> → {debugInfo.bestName}</div>
           </div>
         )}
       </div>
