@@ -23,6 +23,7 @@ export function matchCardByCollectorNumber(
   cards: Card[],
   setFilter: string,
   total?: string | null,
+  detectedInk?: string | null,
 ): CnMatchResult {
   if (!cn) return { card: null, candidates: [], similarity: 0 }
 
@@ -51,6 +52,16 @@ export function matchCardByCollectorNumber(
           matches = narrowed
         }
       }
+    }
+  }
+
+  // When we still have multiple matches, try narrowing by detected ink colour.
+  // Within a single set each ink+cn combination is unique, and across sets the
+  // ink often differs — so this resolves many ambiguous cases automatically.
+  if (detectedInk && matches.length > 1) {
+    const inkNarrow = matches.filter((c) => c.ink === detectedInk)
+    if (inkNarrow.length > 0) {
+      matches = inkNarrow
     }
   }
 

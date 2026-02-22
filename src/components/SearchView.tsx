@@ -46,6 +46,8 @@ interface SearchViewProps {
   scanCount: number;
   debugInfo: ScannerDebugInfo | null;
   debugCaptures: DebugCaptures | null;
+  lastOcrText: string;
+  lastDetectedInk: string | null;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   cameraSupported: boolean;
   onOpenScanner: () => void;
@@ -90,6 +92,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
   scanCount,
   debugInfo,
   debugCaptures,
+  lastOcrText,
+  lastDetectedInk,
   videoRef,
   cameraSupported,
   onOpenScanner,
@@ -918,6 +922,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
           scanCount={scanCount}
           debugInfo={debugInfo}
           debugCaptures={debugCaptures}
+          lastOcrText={lastOcrText}
+          lastDetectedInk={lastDetectedInk}
           videoRef={videoRef}
           onClose={onCloseScanner}
           onRetry={onOpenScanner}

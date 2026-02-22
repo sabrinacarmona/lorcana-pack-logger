@@ -222,6 +222,8 @@ export function App() {
               scanCount={scanner.scanCount}
               debugInfo={scanner.debugInfo}
               debugCaptures={scanner.debugCaptures}
+              lastOcrText={scanner.lastOcrText}
+              lastDetectedInk={scanner.lastDetectedInk}
               videoRef={scanner.videoRef}
               cameraSupported={cameraSupported}
               onOpenScanner={scanner.openScanner}

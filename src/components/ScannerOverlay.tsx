@@ -13,6 +13,8 @@ interface ScannerOverlayProps {
   scanCount: number
   debugInfo: ScannerDebugInfo | null
   debugCaptures: DebugCaptures | null
+  lastOcrText: string
+  lastDetectedInk: string | null
   videoRef: React.RefObject<HTMLVideoElement | null>
   onClose: () => void
   onRetry: () => void
@@ -30,6 +32,8 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   scanCount,
   debugInfo,
   debugCaptures,
+  lastOcrText,
+  lastDetectedInk,
   videoRef,
   onClose,
   onRetry,
@@ -182,14 +186,14 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </div>
         </div>
 
-        {/* Single card-shaped guide frame */}
+        {/* Single card-shaped guide frame — matches algo crop (18%/21%/64%×58%) */}
         <div
           style={{
             position: 'absolute',
-            left: '12%',
-            right: '12%',
-            top: '15%',
-            bottom: '18%',
+            left: '18%',
+            right: '18%',
+            top: '21%',
+            height: '58%',
             pointerEvents: 'none',
           }}
         >
@@ -236,6 +240,38 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             })}
           </div>
 
+          {/* CN region indicator — dashed rect at bottom of guide */}
+          {(scannerState === 'streaming' || scannerState === 'processing') && (
+            <div
+              style={{
+                position: 'absolute',
+                left: '20%',
+                width: '60%',
+                top: '88%',
+                height: '10%',
+                border: '1px dashed rgba(52,199,89,0.5)',
+                borderRadius: 4,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
+          {/* Ink dot indicator — dashed circle at bottom-left of guide */}
+          {(scannerState === 'streaming' || scannerState === 'processing') && (
+            <div
+              style={{
+                position: 'absolute',
+                left: '2%',
+                top: '85%',
+                width: '12%',
+                height: '12%',
+                border: '1px dashed rgba(175,82,222,0.5)',
+                borderRadius: '50%',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
           {/* Status text — centered inside the guide frame */}
           <div
             style={{
@@ -277,21 +313,17 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     fontFamily: "'Outfit', sans-serif",
                   }}
                 >
-                  {debugInfo && debugInfo.dbLoaded < debugInfo.dbTotal
-                    ? 'Loading card images...'
-                    : 'Scanning...'}
+                  Center the card in the frame
                 </span>
-                {debugInfo && debugInfo.dbLoaded < debugInfo.dbTotal && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--accent)',
-                      fontFamily: "'Outfit', sans-serif",
-                    }}
-                  >
-                    {debugInfo.dbLoaded} / {debugInfo.dbTotal} cards
-                  </span>
-                )}
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.45)',
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  Make sure the collector number is visible
+                </span>
               </div>
             )}
 
@@ -360,7 +392,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     fontFamily: "'Outfit', sans-serif",
                   }}
                 >
-                  Matched by image · #{lastMatch.cn}
+                  Matched by {matchMethod === 'cn+ink' ? 'CN + ink' : 'collector #'} · #{lastMatch.cn}
                 </span>
               </div>
             )}
@@ -523,7 +555,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </div>
         )}
 
-        {/* Debug panel — shows live OCR output */}
+        {/* Debug panel — shows live CN + ink matching info */}
         {debugInfo && (scannerState === 'streaming' || scannerState === 'processing') && (
           <div
             style={{
@@ -541,8 +573,9 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               pointerEvents: 'none',
             }}
           >
-            <div>Cam: <span style={{ color: '#aaf' }}>{debugInfo.videoRes || '?'}</span> | DB: <span style={{ color: debugInfo.dbLoaded >= debugInfo.dbTotal ? '#4f4' : '#ff4' }}>{debugInfo.dbLoaded}/{debugInfo.dbTotal}</span></div>
-            <div>Best: <span style={{ color: debugInfo.bestDist <= 0.35 ? '#4f4' : debugInfo.bestDist <= 0.65 ? '#ff4' : '#f84' }}>dist={debugInfo.bestDist === Infinity ? '∞' : debugInfo.bestDist.toFixed(3)}</span> → {debugInfo.bestName}</div>
+            <div>Cam: <span style={{ color: '#aaf' }}>{debugInfo.videoRes || '?'}</span> | OCR: <span style={{ color: debugInfo.lastOcrConfidence >= 60 ? '#4f4' : debugInfo.lastOcrConfidence >= 40 ? '#ff4' : '#f84' }}>{Math.round(debugInfo.lastOcrConfidence)}%</span> "{debugInfo.lastOcrText}"</div>
+            <div>CN: <span style={{ color: debugInfo.parsedCn !== '-' && debugInfo.parsedCn !== 'no match' ? '#4f4' : '#f84' }}>{debugInfo.parsedCn}</span> | Ink: <span style={{ color: debugInfo.inkConfidence >= 0.5 ? '#4f4' : debugInfo.inkConfidence >= 0.3 ? '#ff4' : '#f84' }}>{debugInfo.detectedInk} ({(debugInfo.inkConfidence * 100).toFixed(0)}%)</span></div>
+            <div>Match: <span style={{ color: debugInfo.matchResult.includes('(') ? '#4f4' : '#ff4' }}>{debugInfo.matchResult}</span></div>
           </div>
         )}
       </div>
