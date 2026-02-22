@@ -293,10 +293,10 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             <div
               style={{
                 position: 'absolute',
-                left: '2%',
-                width: '55%',
-                top: '84%',
-                height: '16%',
+                left: '0%',
+                width: '100%',
+                top: '80%',
+                height: '20%',
                 border: '1px dashed rgba(52,199,89,0.5)',
                 borderRadius: 4,
                 pointerEvents: 'none',

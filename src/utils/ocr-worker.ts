@@ -74,33 +74,24 @@ export function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<OcrResul
 }
 
 /**
- * Run OCR optimised for the collector number region (digits + slash).
+ * Run OCR optimised for the collector number region.
  *
- * Switches the worker to SINGLE_LINE page segmentation and restricts the
- * character whitelist to numeric chars.  This dramatically improves accuracy
- * for the small "128/204" text at the bottom of Lorcana cards.
+ * Uses SINGLE_BLOCK mode (no character whitelist) so Tesseract reads text
+ * naturally instead of hallucinating digits from card texture patterns.
+ * The collector number parser then extracts the "130/204" pattern from
+ * the full OCR output using a strict regex + MIN_TOTAL validation.
+ *
+ * The caller is expected to preprocess the canvas (upscale + binarize)
+ * before calling this — see preprocess-ocr.ts.
  */
 export function recognizeCollectorNumber(canvas: HTMLCanvasElement): Promise<OcrResult> {
   return withLock(async () => {
     const worker = await getWorker()
-    try {
-      // SPARSE_TEXT finds text anywhere in the image — ideal for a generous crop
-      // area where the collector number could appear at any position.
-      // The character whitelist restricts output to digits + slash so the parser
-      // can easily pick out the "123/204" pattern.
-      await worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
-        tessedit_char_whitelist: '0123456789/\\| ',
-      })
-      const { data } = await worker.recognize(canvas)
-      return { text: data.text.trim(), confidence: data.confidence }
-    } finally {
-      // Restore defaults so the next recognizeFromCanvas call works correctly
-      await worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-        tessedit_char_whitelist: '',
-      })
-    }
+    // SINGLE_BLOCK is already the default mode — no mode switching needed.
+    // No character whitelist — let Tesseract read all characters naturally.
+    // The parser handles OCR substitutions (O→0, l→1, etc).
+    const { data } = await worker.recognize(canvas)
+    return { text: data.text.trim(), confidence: data.confidence }
   })
 }
 

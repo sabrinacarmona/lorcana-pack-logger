@@ -8,8 +8,8 @@ import { recordFrame, resetTelemetry, getState as getTelemetryState } from '../u
 import { preprocessForOcr } from '../utils/preprocess-ocr'
 
 /** How often to capture a frame and run the matching pipeline (ms).
- * Increased from 400 → 600 to accommodate the 3x upscale preprocessing. */
-const FRAME_INTERVAL = 600
+ * Set to 1000ms to accommodate the larger crop + upscale preprocessing. */
+const FRAME_INTERVAL = 1000
 
 /** How long to prevent re-scanning the same card (ms). */
 const COOLDOWN_MS = 2000
@@ -17,12 +17,11 @@ const COOLDOWN_MS = 2000
 /** How long to show the "matched" state before resuming scanning (ms). */
 const MATCH_DISPLAY_MS = 1500
 
-/** Minimum OCR confidence (0-100) to attempt matching.
- * Lowered from 40 → 20: Tesseract reports low confidence on small card text
- * even when the reading is correct (e.g. "130/204" at 32%).  The collector
- * number parser already validates the pattern strictly, so a low-confidence
- * read that parses correctly is almost certainly right. */
-const MIN_CONFIDENCE = 20
+/** Minimum OCR confidence — effectively disabled (set to 0).
+ * The collector number parser already validates the pattern strictly with regex
+ * + MIN_TOTAL ≥ 100, so any read that parses correctly is almost certainly
+ * right regardless of Tesseract's confidence score. */
+const MIN_CONFIDENCE = 0
 
 /** Minimum ink detection confidence (0-1) to use ink for disambiguation. */
 const MIN_INK_CONFIDENCE = 0.3
@@ -36,19 +35,20 @@ const GUIDE_Y = 0.21
 const GUIDE_W = 0.64
 const GUIDE_H = 0.58
 
-// Collector number region — the very bottom line of the card ("102/204 · EN · 7").
-// Based on debug captures: the card sits at roughly 3-96% of the guide frame,
-// and the CN text is at ~91-95% of the guide frame.  A generous crop from 84%
-// to 100% ensures the text is captured even with slight card misalignment.
-const CN_REGION_LEFT = 0.02
-const CN_REGION_TOP = 0.84
-const CN_REGION_HEIGHT = 0.16
-const CN_REGION_WIDTH = 0.55
+// Collector number region — bottom portion of the guide frame containing the
+// "102/204 · EN · 7" line at the very bottom of each card.
+// Full width (0-100%) so horizontal card position doesn't matter.
+// Bottom 20% (80-100%) is generous enough to capture the CN text regardless of
+// whether the card is top-aligned, centered, or bottom-aligned in the guide.
+const CN_REGION_LEFT = 0.0
+const CN_REGION_TOP = 0.80
+const CN_REGION_HEIGHT = 0.20
+const CN_REGION_WIDTH = 1.0
 
 /** Upscale factor for the CN crop before OCR.
- * Raw crop is ~380×170 px — text is only ~15px tall and Tesseract can't read it.
- * 3x upscale → ~1140×510 px with ~45px text — well within Tesseract's range. */
-const OCR_UPSCALE = 3
+ * With the wider crop (full width × bottom 20%), raw size is ~691×213 px.
+ * 2x upscale → ~1382×426 px — text is ~30px tall, readable by Tesseract. */
+const OCR_UPSCALE = 2
 
 // Ink colour region — sample from the card's name banner area.
 // The banner behind "PACHA / Trekmate" is a large solid area of the ink colour.
@@ -195,6 +195,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
 
   // Latest crop snapshot for diagnostics export
   const cropSnapshotRef = useRef<CropSnapshot | null>(null)
+  // Latest preprocessed CN image (data URL) for visual debugging in diagnostics
+  const preprocessedImageRef = useRef<string | null>(null)
 
   // Keep callbacks in refs so the interval captures the latest values
   const cardsRef = useRef(cards)
@@ -396,6 +398,9 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       // Preprocess: grayscale → auto-invert → Otsu binarization
       // Produces clean black text on white background for Tesseract
       preprocessForOcr(cnCanvas)
+
+      // Save preprocessed image for diagnostics (JPEG, low quality to save memory)
+      try { preprocessedImageRef.current = cnCanvas.toDataURL('image/jpeg', 0.5) } catch { /* ignore */ }
 
       // ── 2. Run OCR ──────────────────────────────────────────────
       const ocrStart = performance.now()
@@ -631,6 +636,9 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         peakLatencyMs: telemetry.peakLatencyMs,
         currentMemoryMB: +(telemetry.currentMemoryBytes / (1024 * 1024)).toFixed(1),
       },
+      // Base64 JPEG of the latest preprocessed CN crop — open in browser to see
+      // exactly what Tesseract received (black/white binarized image)
+      preprocessedCnImage: preprocessedImageRef.current,
       recentFrames: telemetry.frames,
     }
 
