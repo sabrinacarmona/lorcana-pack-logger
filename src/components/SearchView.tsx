@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { Card, Pull, ScannerState } from '../types';
-import type { MatchMethod } from '../hooks/useScanner';
+import type { MatchMethod, ScannerDebugInfo } from '../hooks/useScanner';
 import { PACK_SIZE } from '../constants';
 import { inkGradientStyle } from '../utils/colour';
 import { rarityRowStyle, rarityNameColour } from '../utils/rarity-styles';
@@ -44,6 +44,7 @@ interface SearchViewProps {
   candidates: Card[];
   scannerError: string | null;
   scanCount: number;
+  debugInfo: ScannerDebugInfo | null;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   cameraSupported: boolean;
   onOpenScanner: () => void;
@@ -84,6 +85,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
   candidates,
   scannerError,
   scanCount,
+  debugInfo,
   videoRef,
   cameraSupported,
   onOpenScanner,
@@ -908,6 +910,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
           candidates={candidates}
           error={scannerError}
           scanCount={scanCount}
+          debugInfo={debugInfo}
           videoRef={videoRef}
           onClose={onCloseScanner}
           onRetry={onOpenScanner}

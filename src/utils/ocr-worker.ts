@@ -52,8 +52,12 @@ export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<Oc
 export async function recognizeCollectorNumber(canvas: HTMLCanvasElement): Promise<OcrResult> {
   const worker = await getWorker()
   try {
+    // SPARSE_TEXT finds text anywhere in the image — ideal for a generous crop
+    // area where the collector number could appear at any position.
+    // The character whitelist restricts output to digits + slash so the parser
+    // can easily pick out the "123/204" pattern.
     await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+      tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
       tessedit_char_whitelist: '0123456789/\\| ',
     })
     const { data } = await worker.recognize(canvas)

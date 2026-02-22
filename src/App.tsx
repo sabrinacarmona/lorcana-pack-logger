@@ -220,6 +220,7 @@ export function App() {
               candidates={scanner.candidates}
               scannerError={scanner.error}
               scanCount={scanner.scanCount}
+              debugInfo={scanner.debugInfo}
               videoRef={scanner.videoRef}
               cameraSupported={cameraSupported}
               onOpenScanner={scanner.openScanner}

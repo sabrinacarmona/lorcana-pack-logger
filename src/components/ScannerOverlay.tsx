@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { Card, ScannerState } from '../types'
-import type { MatchMethod } from '../hooks/useScanner'
+import type { MatchMethod, ScannerDebugInfo } from '../hooks/useScanner'
 import { RarityBadge } from './RarityBadge'
 import { InkDot } from './InkDot'
 
@@ -11,6 +11,7 @@ interface ScannerOverlayProps {
   candidates: Card[]
   error: string | null
   scanCount: number
+  debugInfo: ScannerDebugInfo | null
   videoRef: React.RefObject<HTMLVideoElement | null>
   onClose: () => void
   onRetry: () => void
@@ -24,6 +25,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   candidates,
   error,
   scanCount,
+  debugInfo,
   videoRef,
   onClose,
   onRetry,
@@ -145,59 +147,15 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </button>
         </div>
 
-        {/* Bottom guide frame — collector number target zone */}
+        {/* Single card-shaped guide frame */}
         <div
           style={{
             position: 'absolute',
-            left: '15%',
-            right: '15%',
-            top: '82%',
-            height: '14%',
-          }}
-        >
-          <div style={{ width: '100%', height: '100%', position: 'relative', opacity: 0.5 }}>
-            {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map((corner) => {
-              const isTop = corner.includes('top')
-              const isLeft = corner.includes('Left')
-              return (
-                <div
-                  key={`bn-${corner}`}
-                  style={{
-                    position: 'absolute',
-                    [isTop ? 'top' : 'bottom']: -1,
-                    [isLeft ? 'left' : 'right']: -1,
-                    width: 16,
-                    height: 16,
-                    borderColor: guideColor,
-                    borderStyle: 'solid',
-                    borderWidth: 0,
-                    borderTopWidth: isTop ? 2 : 0,
-                    borderBottomWidth: isTop ? 0 : 2,
-                    borderLeftWidth: isLeft ? 2 : 0,
-                    borderRightWidth: isLeft ? 0 : 2,
-                    borderRadius: isTop
-                      ? isLeft ? '4px 0 0 0' : '0 4px 0 0'
-                      : isLeft ? '0 0 0 4px' : '0 0 4px 0',
-                    transition: 'border-color 200ms ease',
-                  }}
-                />
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Upper guide frame — card name fallback zone */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '10%',
-            right: '10%',
+            left: '12%',
+            right: '12%',
             top: '15%',
-            height: '20%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
+            bottom: '18%',
+            pointerEvents: 'none',
           }}
         >
           {/* Guide rectangle with corner brackets */}
@@ -224,8 +182,8 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     position: 'absolute',
                     [isTop ? 'top' : 'bottom']: -2,
                     [isLeft ? 'left' : 'right']: -2,
-                    width: 24,
-                    height: 24,
+                    width: 28,
+                    height: 28,
                     borderColor: guideColor,
                     borderStyle: 'solid',
                     borderWidth: 0,
@@ -234,8 +192,8 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     borderLeftWidth: isLeft ? 3 : 0,
                     borderRightWidth: isLeft ? 0 : 3,
                     borderRadius: isTop
-                      ? isLeft ? '6px 0 0 0' : '0 6px 0 0'
-                      : isLeft ? '0 0 0 6px' : '0 0 6px 0',
+                      ? isLeft ? '8px 0 0 0' : '0 8px 0 0'
+                      : isLeft ? '0 0 0 8px' : '0 0 8px 0',
                     transition: 'border-color 200ms ease',
                   }}
                 />
@@ -462,10 +420,34 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 animation: 'fadeIn 300ms ease-out',
               }}
             >
-              Position the full card in view
+              Center the card within the brackets
             </div>
           )}
         </div>
+
+        {/* Debug panel — shows live OCR output */}
+        {debugInfo && (scannerState === 'streaming' || scannerState === 'processing') && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 'max(8px, env(safe-area-inset-bottom))',
+              left: 8,
+              right: 8,
+              background: 'rgba(0,0,0,0.75)',
+              borderRadius: 8,
+              padding: '8px 10px',
+              fontFamily: 'monospace',
+              fontSize: 10,
+              lineHeight: 1.4,
+              color: 'rgba(255,255,255,0.7)',
+              pointerEvents: 'none',
+            }}
+          >
+            <div>CN OCR: <span style={{ color: debugInfo.cnConf > 30 ? '#4f4' : '#f84' }}>{debugInfo.cnOcr || '—'}</span> ({debugInfo.cnConf}%)</div>
+            {debugInfo.cnParsed && <div>CN parsed: <span style={{ color: '#4ff' }}>#{debugInfo.cnParsed}</span></div>}
+            <div>Name OCR: <span style={{ color: debugInfo.nameConf > 50 ? '#4f4' : '#f84' }}>{debugInfo.nameOcr?.slice(0, 40) || '—'}</span> ({debugInfo.nameConf}%)</div>
+          </div>
+        )}
       </div>
     </div>
   )
