@@ -51,16 +51,15 @@ const CN_REGION_WIDTH = 1.0
  * 2x upscale → ~1382×426 px — text is ~30px tall, readable by Tesseract. */
 const OCR_UPSCALE = 2
 
-// Ink colour region — tall vertical strip along the card's left edge.
-// Character cards have the ink name banner at ~52%, but non-character cards
-// (Action, Song, Item) have it at ~38-45%.  A tall strip from 30–68% catches
-// the ink-coloured banner regardless of card type.  Width stays narrow to
-// avoid sampling text.  The ink detector's brightness + per-pixel classifier
-// already filters out text, glare, and dark borders.
+// Ink colour region — moderate strip covering the name banner area.
+// Character cards have the ink name banner at ~52%, non-character cards
+// (Action, Song, Item) have it at ~42-48%.  A 14%-tall strip from 44–58%
+// catches both without dipping into card art (above ~42%) or text area
+// (below ~60%) which previously caused false Steel detection from art colours.
 const INK_REGION_LEFT = 0.01
-const INK_REGION_TOP = 0.30
+const INK_REGION_TOP = 0.44
 const INK_REGION_WIDTH = 0.10
-const INK_REGION_HEIGHT = 0.38
+const INK_REGION_HEIGHT = 0.14
 
 // ── object-fit: cover transform ─────────────────────────────────────────
 // The video element uses `object-fit: cover`, which scales the video to fill
@@ -347,8 +346,10 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const processFrame = useCallback(async () => {
     if (!videoRef.current || videoRef.current.readyState < 2) return
     if (processingRef.current) return
-    // Don't process while user is picking a candidate or viewing a match
-    if (stateRef.current === 'disambiguating' || stateRef.current === 'matched') return
+    // Don't process while viewing a match toast
+    if (stateRef.current === 'matched') return
+    // During disambiguation, KEEP scanning — a later frame may read the set
+    // number and auto-resolve to a single card without user interaction.
     processingRef.current = true
 
     try {
@@ -533,18 +534,22 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       })
 
       if (result.card) {
+        // Single match found — auto-accept (also dismisses disambiguation if open)
         const key = `${result.card.setCode}-${result.card.cn}`
         if (!cooldownRef.current.has(key)) {
           acceptMatch(result.card, method)
         }
       } else if (result.candidates.length > 0) {
-        // Check cooldown for all candidates — if any is on cooldown, skip
-        const allOnCooldown = result.candidates.every(
-          (c) => cooldownRef.current.has(`${c.setCode}-${c.cn}`),
-        )
-        if (!allOnCooldown) {
-          setCandidates(result.candidates)
-          setScannerState('disambiguating')
+        // Multiple candidates — only show disambiguation if not already showing.
+        // Keep scanning in the background to try to auto-resolve with set number.
+        if (stateRef.current !== 'disambiguating') {
+          const allOnCooldown = result.candidates.every(
+            (c) => cooldownRef.current.has(`${c.setCode}-${c.cn}`),
+          )
+          if (!allOnCooldown) {
+            setCandidates(result.candidates)
+            setScannerState('disambiguating')
+          }
         }
       }
     } finally {

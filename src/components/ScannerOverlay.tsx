@@ -304,15 +304,15 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             />
           )}
 
-          {/* Ink colour indicator — tall strip covering name banner for all card types */}
+          {/* Ink colour indicator — strip covering name banner for all card types */}
           {(scannerState === 'streaming' || scannerState === 'processing') && (
             <div
               style={{
                 position: 'absolute',
                 left: '1%',
-                top: '30%',
+                top: '44%',
                 width: '10%',
-                height: '38%',
+                height: '14%',
                 border: '1px dashed rgba(175,82,222,0.5)',
                 borderRadius: 4,
                 pointerEvents: 'none',
