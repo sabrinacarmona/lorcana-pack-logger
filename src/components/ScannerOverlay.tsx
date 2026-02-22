@@ -229,16 +229,38 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               </span>
             )}
             {(scannerState === 'streaming' || scannerState === 'processing') && (
-              <span
+              <div
                 style={{
-                  fontSize: 14,
-                  color: 'rgba(255,255,255,0.8)',
-                  fontFamily: "'Outfit', sans-serif",
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
                   animation: 'fadeIn 300ms ease-out',
                 }}
               >
-                Scanning...
-              </span>
+                <span
+                  style={{
+                    fontSize: 14,
+                    color: 'rgba(255,255,255,0.8)',
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  {debugInfo && debugInfo.dbLoaded < debugInfo.dbTotal
+                    ? 'Loading card images...'
+                    : 'Scanning...'}
+                </span>
+                {debugInfo && debugInfo.dbLoaded < debugInfo.dbTotal && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--accent)',
+                      fontFamily: "'Outfit', sans-serif",
+                    }}
+                  >
+                    {debugInfo.dbLoaded} / {debugInfo.dbTotal} cards
+                  </span>
+                )}
+              </div>
             )}
 
             {isMatched && lastMatch && (
@@ -306,9 +328,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     fontFamily: "'Outfit', sans-serif",
                   }}
                 >
-                  {matchMethod === 'cn'
-                    ? `Matched by #${lastMatch.cn}`
-                    : 'Matched by name'}
+                  Matched by image · #{lastMatch.cn}
                 </span>
               </div>
             )}
@@ -489,10 +509,8 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               pointerEvents: 'none',
             }}
           >
-            <div>Cam: <span style={{ color: '#aaf' }}>{debugInfo.videoRes || '?'}</span></div>
-            <div>CN OCR: <span style={{ color: debugInfo.cnConf > 30 ? '#4f4' : '#f84' }}>{debugInfo.cnOcr || '—'}</span> ({debugInfo.cnConf}%)</div>
-            {debugInfo.cnParsed && <div>CN parsed: <span style={{ color: '#4ff' }}>#{debugInfo.cnParsed}</span></div>}
-            <div>Name OCR: <span style={{ color: debugInfo.nameConf > 50 ? '#4f4' : '#f84' }}>{debugInfo.nameOcr?.slice(0, 40) || '—'}</span> ({debugInfo.nameConf}%)</div>
+            <div>Cam: <span style={{ color: '#aaf' }}>{debugInfo.videoRes || '?'}</span> | DB: <span style={{ color: debugInfo.dbLoaded >= debugInfo.dbTotal ? '#4f4' : '#ff4' }}>{debugInfo.dbLoaded}/{debugInfo.dbTotal}</span></div>
+            <div>Best: <span style={{ color: debugInfo.bestDist <= 14 ? '#4f4' : debugInfo.bestDist <= 22 ? '#ff4' : '#f84' }}>dist={debugInfo.bestDist === Infinity ? '∞' : debugInfo.bestDist}</span> → {debugInfo.bestName}</div>
           </div>
         )}
       </div>
