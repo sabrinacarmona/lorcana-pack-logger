@@ -252,6 +252,7 @@ export function App() {
               onCaptureDebug={scanner.captureDebugFrame}
               onDismissDebugCaptures={scanner.dismissDebugCaptures}
               onToggleTelemetry={toggleOverlay}
+              onExportDiagnostics={scanner.exportDiagnostics}
             />
             </ErrorBoundary>
           )}

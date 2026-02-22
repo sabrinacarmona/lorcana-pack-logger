@@ -22,6 +22,7 @@ interface ScannerOverlayProps {
   onCaptureDebug: () => void
   onDismissDebugCaptures: () => void
   onToggleTelemetry: () => void
+  onExportDiagnostics: () => void
 }
 
 export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
@@ -42,6 +43,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   onCaptureDebug,
   onDismissDebugCaptures,
   onToggleTelemetry,
+  onExportDiagnostics,
 }) => {
   const [showHint, setShowHint] = useState(false)
 
@@ -187,6 +189,27 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 >
                   Debug
                 </button>
+                <button
+                  onClick={onExportDiagnostics}
+                  style={{
+                    height: 36,
+                    padding: '0 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    background: 'rgba(52,199,89,0.25)',
+                    border: '1px solid rgba(52,199,89,0.45)',
+                    borderRadius: 'var(--radius-full)',
+                    color: '#34c759',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  Export
+                </button>
               </>
             )}
             <button
@@ -272,8 +295,8 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 position: 'absolute',
                 left: '2%',
                 width: '55%',
-                top: '92%',
-                height: '7%',
+                top: '84%',
+                height: '16%',
                 border: '1px dashed rgba(52,199,89,0.5)',
                 borderRadius: 4,
                 pointerEvents: 'none',

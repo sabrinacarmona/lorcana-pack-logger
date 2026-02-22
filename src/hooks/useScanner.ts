@@ -4,7 +4,7 @@ import { recognizeCollectorNumber, terminateWorker } from '../utils/ocr-worker'
 import { parseCollectorNumber } from '../utils/collector-number-parser'
 import { matchCardByCollectorNumber } from '../utils/card-cn-matcher'
 import { detectInkColor } from '../utils/ink-detector'
-import { recordFrame, resetTelemetry } from '../utils/telemetry'
+import { recordFrame, resetTelemetry, getState as getTelemetryState } from '../utils/telemetry'
 
 /** How often to capture a frame and run the matching pipeline (ms). */
 const FRAME_INTERVAL = 400
@@ -15,24 +15,32 @@ const COOLDOWN_MS = 2000
 /** How long to show the "matched" state before resuming scanning (ms). */
 const MATCH_DISPLAY_MS = 1500
 
-/** Minimum OCR confidence (0-100) to attempt matching. */
-const MIN_CONFIDENCE = 40
+/** Minimum OCR confidence (0-100) to attempt matching.
+ * Lowered from 40 → 20: Tesseract reports low confidence on small card text
+ * even when the reading is correct (e.g. "130/204" at 32%).  The collector
+ * number parser already validates the pattern strictly, so a low-confidence
+ * read that parses correctly is almost certainly right. */
+const MIN_CONFIDENCE = 20
 
 /** Minimum ink detection confidence (0-1) to use ink for disambiguation. */
 const MIN_INK_CONFIDENCE = 0.3
 
-// ── Crop region percentages (relative to full video frame) ─────────────
-// The algorithm crop is the card-shaped area in the centre of the camera feed.
-const ALGO_CROP_X = 0.18
-const ALGO_CROP_Y = 0.21
-const ALGO_CROP_W = 0.64
-const ALGO_CROP_H = 0.58
+// ── Guide frame percentages (relative to CSS container / screen) ────────
+// These match the ScannerOverlay's guide frame (left:18%, right:18%, top:21%, height:58%).
+// The algorithm must convert these CSS percentages to video-pixel coordinates
+// because `object-fit: cover` crops the video — CSS % ≠ video %.
+const GUIDE_X = 0.18
+const GUIDE_Y = 0.21
+const GUIDE_W = 0.64
+const GUIDE_H = 0.58
 
 // Collector number region — the very bottom line of the card ("102/204 · EN · 7").
-// Pushed low: card bottom sits at ~95% of algo crop, CN text is ~92-98%.
+// Based on debug captures: the card sits at roughly 3-96% of the guide frame,
+// and the CN text is at ~91-95% of the guide frame.  A generous crop from 84%
+// to 100% ensures the text is captured even with slight card misalignment.
 const CN_REGION_LEFT = 0.02
-const CN_REGION_TOP = 0.92
-const CN_REGION_HEIGHT = 0.07
+const CN_REGION_TOP = 0.84
+const CN_REGION_HEIGHT = 0.16
 const CN_REGION_WIDTH = 0.55
 
 // Ink colour region — sample from the card's name banner area.
@@ -41,6 +49,49 @@ const CN_REGION_WIDTH = 0.55
 const INK_REGION_LEFT = 0.01
 const INK_REGION_TOP = 0.52
 const INK_REGION_SIZE = 0.10
+
+// ── object-fit: cover transform ─────────────────────────────────────────
+// The video element uses `object-fit: cover`, which scales the video to fill
+// the container and crops the overflow.  This means CSS percentages on the
+// overlay do NOT map 1:1 to video pixel percentages.  A landscape 1920×1080
+// video displayed in a portrait 375×812 container will have ~74% of its width
+// cropped.  Without this transform, the algorithm crops from the wrong region
+// and the scanner can never match a card (0% success rate).
+
+interface CoverTransform {
+  /** Horizontal offset from video origin to start of visible area (px). */
+  offsetX: number
+  /** Vertical offset from video origin to start of visible area (px). */
+  offsetY: number
+  /** Width of the visible portion of the video (in video pixels). */
+  visibleW: number
+  /** Height of the visible portion of the video (in video pixels). */
+  visibleH: number
+}
+
+/**
+ * Compute the object-fit: cover mapping from CSS container space to video space.
+ *
+ * CSS % position P maps to video pixel: offset + P × visible
+ */
+function getCoverTransform(video: HTMLVideoElement): CoverTransform | null {
+  const cw = video.clientWidth
+  const ch = video.clientHeight
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (cw === 0 || ch === 0 || vw === 0 || vh === 0) return null
+
+  // cover picks the larger scale factor so the video fills both axes
+  const scale = Math.max(cw / vw, ch / vh)
+  const visibleW = cw / scale
+  const visibleH = ch / scale
+  return {
+    offsetX: (vw - visibleW) / 2,
+    offsetY: (vh - visibleH) / 2,
+    visibleW,
+    visibleH,
+  }
+}
 
 interface UseScannerOptions {
   cards: Card[]
@@ -64,14 +115,31 @@ export interface ScannerDebugInfo {
 export interface DebugCaptures {
   /** Full uncropped camera frame. */
   fullFrame: string
-  /** The crop currently sent to the matching algorithm. */
+  /** The guide frame crop (cover-aware) sent to the matching algorithm. */
   algoCrop: string
-  /** Bottom ~15% of the card area — where the collector number lives. */
+  /** Bottom of the guide frame — where the collector number lives. */
   cnRegion: string
-  /** Bottom-left corner — where the ink colour dot lives. */
+  /** Card name banner area — where the ink colour is sampled. */
   inkDotRegion: string
   /** Dimensions of the raw video feed. */
   videoRes: string
+}
+
+/** Snapshot of the cover transform + crop pixel coordinates for diagnostics. */
+export interface CropSnapshot {
+  coverTransform: {
+    containerWidth: number
+    containerHeight: number
+    videoWidth: number
+    videoHeight: number
+    offsetX: number
+    offsetY: number
+    visibleW: number
+    visibleH: number
+  }
+  guideFramePx: { x: number; y: number; w: number; h: number }
+  cnRegionPx: { x: number; y: number; w: number; h: number }
+  inkRegionPx: { x: number; y: number; w: number; h: number }
 }
 
 export interface UseScannerReturn {
@@ -92,6 +160,7 @@ export interface UseScannerReturn {
   selectCandidate: (card: Card) => void
   captureDebugFrame: () => void
   dismissDebugCaptures: () => void
+  exportDiagnostics: () => void
 }
 
 export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOptions): UseScannerReturn {
@@ -116,6 +185,9 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   // Off-screen canvases for cropping regions
   const cnCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const inkCanvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Latest crop snapshot for diagnostics export
+  const cropSnapshotRef = useRef<CropSnapshot | null>(null)
 
   // Keep callbacks in refs so the interval captures the latest values
   const cardsRef = useRef(cards)
@@ -180,21 +252,30 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     const vh = video.videoHeight
     if (vw === 0 || vh === 0) return
 
+    // Account for object-fit: cover transform
+    const cover = getCoverTransform(video)
+    if (!cover) return
+
+    const gx = cover.offsetX + GUIDE_X * cover.visibleW
+    const gy = cover.offsetY + GUIDE_Y * cover.visibleH
+    const gw = GUIDE_W * cover.visibleW
+    const gh = GUIDE_H * cover.visibleH
+
     const snap = document.createElement('canvas')
     const sCtx = snap.getContext('2d')
     if (!sCtx) return
 
-    // Helper: crop a region from the video and return a data URL
+    // Helper: crop a region from the video (in video-pixel coords) and return a data URL
     const cropToDataUrl = (
-      xPct: number, yPct: number, wPct: number, hPct: number,
+      sx: number, sy: number, sw: number, sh: number,
     ): string => {
-      const sx = Math.floor(vw * xPct)
-      const sy = Math.floor(vh * yPct)
-      const sw = Math.floor(vw * wPct)
-      const sh = Math.floor(vh * hPct)
-      snap.width = sw
-      snap.height = sh
-      sCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
+      const ix = Math.floor(sx)
+      const iy = Math.floor(sy)
+      const iw = Math.max(1, Math.floor(sw))
+      const ih = Math.max(1, Math.floor(sh))
+      snap.width = iw
+      snap.height = ih
+      sCtx.drawImage(video, ix, iy, iw, ih, 0, 0, iw, ih)
       return snap.toDataURL('image/jpeg', 0.85)
     }
 
@@ -204,23 +285,23 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     sCtx.drawImage(video, 0, 0)
     const fullFrame = snap.toDataURL('image/jpeg', 0.7)
 
-    // 2. Algo crop — exactly what processFrame uses
-    const algoCrop = cropToDataUrl(ALGO_CROP_X, ALGO_CROP_Y, ALGO_CROP_W, ALGO_CROP_H)
+    // 2. Guide frame crop — exactly what processFrame uses (cover-aware)
+    const algoCrop = cropToDataUrl(gx, gy, gw, gh)
 
     // 3. Collector number region
     const cnRegion = cropToDataUrl(
-      ALGO_CROP_X + ALGO_CROP_W * CN_REGION_LEFT,
-      ALGO_CROP_Y + ALGO_CROP_H * CN_REGION_TOP,
-      ALGO_CROP_W * CN_REGION_WIDTH,
-      ALGO_CROP_H * CN_REGION_HEIGHT,
+      gx + CN_REGION_LEFT * gw,
+      gy + CN_REGION_TOP * gh,
+      CN_REGION_WIDTH * gw,
+      CN_REGION_HEIGHT * gh,
     )
 
-    // 4. Ink dot region
+    // 4. Ink colour region
     const inkDotRegion = cropToDataUrl(
-      ALGO_CROP_X + ALGO_CROP_W * INK_REGION_LEFT,
-      ALGO_CROP_Y + ALGO_CROP_H * INK_REGION_TOP,
-      ALGO_CROP_W * INK_REGION_SIZE,
-      ALGO_CROP_H * INK_REGION_SIZE,
+      gx + INK_REGION_LEFT * gw,
+      gy + INK_REGION_TOP * gh,
+      INK_REGION_SIZE * gw,
+      INK_REGION_SIZE * gh,
     )
 
     setDebugCaptures({
@@ -256,16 +337,47 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       const vh = video.videoHeight
       if (vw === 0 || vh === 0) return
 
+      // Convert CSS guide frame % → video pixel coordinates (cover transform)
+      const cover = getCoverTransform(video)
+      if (!cover) return
+
+      const guideX = cover.offsetX + GUIDE_X * cover.visibleW
+      const guideY = cover.offsetY + GUIDE_Y * cover.visibleH
+      const guideW = GUIDE_W * cover.visibleW
+      const guideH = GUIDE_H * cover.visibleH
+
       // ── 1. Crop the collector number region ──────────────────────
       if (!cnCanvasRef.current) cnCanvasRef.current = document.createElement('canvas')
       const cnCanvas = cnCanvasRef.current
       const cnCtx = cnCanvas.getContext('2d')
       if (!cnCtx) return
 
-      const cnSx = Math.floor(vw * (ALGO_CROP_X + ALGO_CROP_W * CN_REGION_LEFT))
-      const cnSy = Math.floor(vh * (ALGO_CROP_Y + ALGO_CROP_H * CN_REGION_TOP))
-      const cnSw = Math.floor(vw * ALGO_CROP_W * CN_REGION_WIDTH)
-      const cnSh = Math.floor(vh * ALGO_CROP_H * CN_REGION_HEIGHT)
+      const cnSx = Math.floor(guideX + CN_REGION_LEFT * guideW)
+      const cnSy = Math.floor(guideY + CN_REGION_TOP * guideH)
+      const cnSw = Math.floor(CN_REGION_WIDTH * guideW)
+      const cnSh = Math.floor(CN_REGION_HEIGHT * guideH)
+
+      // Store crop snapshot for diagnostics (lightweight — just numbers)
+      cropSnapshotRef.current = {
+        coverTransform: {
+          containerWidth: video.clientWidth,
+          containerHeight: video.clientHeight,
+          videoWidth: vw,
+          videoHeight: vh,
+          offsetX: Math.round(cover.offsetX),
+          offsetY: Math.round(cover.offsetY),
+          visibleW: Math.round(cover.visibleW),
+          visibleH: Math.round(cover.visibleH),
+        },
+        guideFramePx: { x: Math.round(guideX), y: Math.round(guideY), w: Math.round(guideW), h: Math.round(guideH) },
+        cnRegionPx: { x: cnSx, y: cnSy, w: cnSw, h: cnSh },
+        inkRegionPx: {
+          x: Math.floor(guideX + INK_REGION_LEFT * guideW),
+          y: Math.floor(guideY + INK_REGION_TOP * guideH),
+          w: Math.floor(INK_REGION_SIZE * guideW),
+          h: Math.floor(INK_REGION_SIZE * guideH),
+        },
+      }
 
       cnCanvas.width = cnSw
       cnCanvas.height = cnSh
@@ -334,10 +446,10 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       const inkCtx = inkCanvas.getContext('2d')
       if (!inkCtx) return
 
-      const inkSx = Math.floor(vw * (ALGO_CROP_X + ALGO_CROP_W * INK_REGION_LEFT))
-      const inkSy = Math.floor(vh * (ALGO_CROP_Y + ALGO_CROP_H * INK_REGION_TOP))
-      const inkSw = Math.floor(vw * ALGO_CROP_W * INK_REGION_SIZE)
-      const inkSh = Math.floor(vh * ALGO_CROP_H * INK_REGION_SIZE)
+      const inkSx = Math.floor(guideX + INK_REGION_LEFT * guideW)
+      const inkSy = Math.floor(guideY + INK_REGION_TOP * guideH)
+      const inkSw = Math.floor(INK_REGION_SIZE * guideW)
+      const inkSh = Math.floor(INK_REGION_SIZE * guideH)
 
       inkCanvas.width = inkSw
       inkCanvas.height = inkSh
@@ -468,6 +580,61 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     }
   }, [processFrame])
 
+  /**
+   * Export a compact JSON diagnostics file and trigger a browser download.
+   * Contains everything needed to debug scanner failures remotely:
+   * cover transform, crop coordinates, telemetry frames, and app metadata.
+   */
+  const exportDiagnostics = useCallback(() => {
+    const telemetry = getTelemetryState()
+    const diag = {
+      exportedAt: new Date().toISOString(),
+      appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown',
+      userAgent: navigator.userAgent,
+      screen: {
+        width: window.screen.width,
+        height: window.screen.height,
+        devicePixelRatio: window.devicePixelRatio,
+        orientationType: screen.orientation?.type || 'unknown',
+      },
+      setFilter: setFilterRef.current,
+      cardPoolSize: cardsRef.current.length,
+      coverTransform: cropSnapshotRef.current?.coverTransform || null,
+      cropCoordinates: cropSnapshotRef.current
+        ? {
+            guideFrame: cropSnapshotRef.current.guideFramePx,
+            cnRegion: cropSnapshotRef.current.cnRegionPx,
+            inkRegion: cropSnapshotRef.current.inkRegionPx,
+          }
+        : null,
+      constants: {
+        GUIDE: { x: GUIDE_X, y: GUIDE_Y, w: GUIDE_W, h: GUIDE_H },
+        CN_REGION: { left: CN_REGION_LEFT, top: CN_REGION_TOP, w: CN_REGION_WIDTH, h: CN_REGION_HEIGHT },
+        INK_REGION: { left: INK_REGION_LEFT, top: INK_REGION_TOP, size: INK_REGION_SIZE },
+        MIN_CONFIDENCE,
+        MIN_INK_CONFIDENCE,
+      },
+      telemetry: {
+        totalFrames: telemetry.totalFrames,
+        avgLatencyMs: telemetry.avgLatencyMs,
+        peakLatencyMs: telemetry.peakLatencyMs,
+        currentMemoryMB: +(telemetry.currentMemoryBytes / (1024 * 1024)).toFixed(1),
+      },
+      recentFrames: telemetry.frames,
+    }
+
+    const json = JSON.stringify(diag, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `scanner-diag-${Date.now()}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [])
+
   const closeScanner = useCallback(() => {
     stopStream()
     setScannerState('idle')
@@ -515,5 +682,6 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     selectCandidate,
     captureDebugFrame,
     dismissDebugCaptures,
+    exportDiagnostics,
   }
 }
