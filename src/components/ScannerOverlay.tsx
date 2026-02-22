@@ -19,6 +19,8 @@ interface ScannerOverlayProps {
   onClose: () => void
   onRetry: () => void
   onSelectCandidate: (card: Card) => void
+  onConfirmMatch: (variant: 'normal' | 'foil') => void
+  onSkipMatch: () => void
   onDismissDisambiguation: () => void
   onCaptureDebug: () => void
   onDismissDebugCaptures: () => void
@@ -41,6 +43,8 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   onClose,
   onRetry,
   onSelectCandidate,
+  onConfirmMatch,
+  onSkipMatch,
   onDismissDisambiguation,
   onCaptureDebug,
   onDismissDebugCaptures,
@@ -440,7 +444,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           )}
         </div>
 
-        {/* ── Match toast — slides up from bottom, doesn't block the camera ── */}
+        {/* ── Match confirmation — card info + Normal / Foil / Skip buttons ── */}
         {isMatched && lastMatch && (
           <div
             style={{
@@ -448,7 +452,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               bottom: 0,
               left: 0,
               right: 0,
-              background: 'rgba(0,0,0,0.85)',
+              background: 'rgba(0,0,0,0.88)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
               borderRadius: '20px 20px 0 0',
@@ -459,56 +463,31 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               zIndex: 3,
             }}
           >
+            {/* Card info row */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
+                marginBottom: 14,
               }}
             >
-              {/* Green checkmark */}
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: 'rgba(52,199,89,0.2)',
-                  border: '2px solid rgba(52,199,89,0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  fontSize: 18,
-                }}
-              >
-                ✓
-              </div>
-
-              {/* Card thumbnail */}
               {lastMatch.imageUrl && (
                 <img
                   src={lastMatch.imageUrl}
                   alt={lastMatch.display}
                   style={{
-                    width: 40,
-                    height: 56,
-                    borderRadius: 5,
+                    width: 48,
+                    height: 67,
+                    borderRadius: 6,
                     objectFit: 'cover',
                     border: '1.5px solid rgba(52,199,89,0.5)',
                     flexShrink: 0,
                   }}
                 />
               )}
-
-              {/* Card info */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <InkDot ink={lastMatch.ink} />
                   <span
                     style={{
@@ -523,19 +502,78 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                   >
                     {lastMatch.display}
                   </span>
-                  <RarityBadge rarity={lastMatch.rarity} />
                 </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'rgba(255,255,255,0.5)',
-                    fontFamily: "'Outfit', sans-serif",
-                    marginTop: 2,
-                  }}
-                >
-                  {lastMatch.setName} · #{lastMatch.cn} · {matchMethod === 'cn+ink' ? 'CN + ink' : 'collector #'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <RarityBadge rarity={lastMatch.rarity} />
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: 'rgba(255,255,255,0.5)',
+                      fontFamily: "'Outfit', sans-serif",
+                    }}
+                  >
+                    {lastMatch.setName} · #{lastMatch.cn}
+                  </span>
                 </div>
               </div>
+              {/* Skip / wrong card button */}
+              <button
+                onClick={onSkipMatch}
+                style={{
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-full)',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 16,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => onConfirmMatch('normal')}
+                style={{
+                  flex: 1,
+                  padding: '12px 0',
+                  background: 'var(--success)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  color: '#000',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                Add Normal
+              </button>
+              <button
+                onClick={() => onConfirmMatch('foil')}
+                style={{
+                  flex: 1,
+                  padding: '12px 0',
+                  background: 'rgba(175,82,222,0.25)',
+                  border: '1.5px solid rgba(175,82,222,0.5)',
+                  borderRadius: 'var(--radius-md)',
+                  color: '#c084fc',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                Add Foil
+              </button>
             </div>
           </div>
         )}

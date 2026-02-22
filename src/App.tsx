@@ -59,13 +59,13 @@ export function App() {
   const scanner = useScanner({
     cards,
     setFilter: search.setFilter,
-    onCardMatched: useCallback((card: Card) => {
+    onCardMatched: useCallback((card: Card, variant: 'normal' | 'foil') => {
       // Ensure session has started
       session.ensureSessionStarted()
       const addCount = session.incrementAddCount()
       const packNumber = Math.ceil(addCount / 12)
-      pulls.addPull(card, 'normal', packNumber)
-      undo.recordAction(card, 'normal')
+      pulls.addPull(card, variant, packNumber)
+      undo.recordAction(card, variant)
       sensory.triggerFeedback(card.rarity)
     }, [session, pulls, undo, sensory]),
   })
@@ -249,6 +249,8 @@ export function App() {
               onOpenScanner={scanner.openScanner}
               onCloseScanner={scanner.closeScanner}
               onSelectCandidate={scanner.selectCandidate}
+              onConfirmMatch={scanner.confirmMatch}
+              onSkipMatch={scanner.skipMatch}
               onDismissDisambiguation={scanner.dismissDisambiguation}
               onCaptureDebug={scanner.captureDebugFrame}
               onDismissDebugCaptures={scanner.dismissDebugCaptures}

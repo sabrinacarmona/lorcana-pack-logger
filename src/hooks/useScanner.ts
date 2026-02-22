@@ -107,7 +107,7 @@ function getCoverTransform(video: HTMLVideoElement): CoverTransform | null {
 interface UseScannerOptions {
   cards: Card[]
   setFilter: string
-  onCardMatched: (card: Card) => void
+  onCardMatched: (card: Card, variant: 'normal' | 'foil') => void
 }
 
 export type MatchMethod = 'cn' | 'cn+ink' | null
@@ -169,6 +169,8 @@ export interface UseScannerReturn {
   openScanner: () => void
   closeScanner: () => void
   selectCandidate: (card: Card) => void
+  confirmMatch: (variant: 'normal' | 'foil') => void
+  skipMatch: () => void
   dismissDisambiguation: () => void
   captureDebugFrame: () => void
   dismissDebugCaptures: () => void
@@ -234,7 +236,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     processingRef.current = false
   }, [])
 
-  /** Accept a card as the final match (used for both auto-match and disambiguation). */
+  /** Show a matched card for user confirmation (does NOT add to pulls). */
   const acceptMatch = useCallback((card: Card, method: MatchMethod = 'cn') => {
     const key = `${card.setCode}-${card.cn}`
     cooldownRef.current.set(key, Date.now())
@@ -242,15 +244,31 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     setMatchMethod(method)
     setCandidates([])
     setScannerState('matched')
-    setScanCount((c) => c + 1)
-    onCardMatchedRef.current(card)
+    // Card is NOT added yet — user must confirm via confirmMatch()
+  }, [])
 
-    // Return to streaming after the match display period
+  /** User confirms the matched card — add to pulls and resume scanning. */
+  const confirmMatch = useCallback((variant: 'normal' | 'foil') => {
+    if (!lastMatch) return
+    onCardMatchedRef.current(lastMatch, variant)
+    setScanCount((c) => c + 1)
+    // Brief flash then resume scanning
     matchTimeoutRef.current = setTimeout(() => {
       setScannerState('streaming')
       setLastMatch(null)
       setMatchMethod(null)
     }, MATCH_DISPLAY_MS)
+  }, [lastMatch])
+
+  /** User skips/dismisses the matched card — resume scanning without adding. */
+  const skipMatch = useCallback(() => {
+    if (matchTimeoutRef.current) {
+      clearTimeout(matchTimeoutRef.current)
+      matchTimeoutRef.current = null
+    }
+    setScannerState('streaming')
+    setLastMatch(null)
+    setMatchMethod(null)
   }, [])
 
   /** User taps a candidate during disambiguation. */
@@ -723,6 +741,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     openScanner,
     closeScanner,
     selectCandidate,
+    confirmMatch,
+    skipMatch,
     dismissDisambiguation,
     captureDebugFrame,
     dismissDebugCaptures,
