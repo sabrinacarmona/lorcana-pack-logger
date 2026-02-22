@@ -53,6 +53,7 @@ interface SearchViewProps {
   onOpenScanner: () => void;
   onCloseScanner: () => void;
   onSelectCandidate: (card: Card) => void;
+  onDismissDisambiguation: () => void;
   onCaptureDebug: () => void;
   onDismissDebugCaptures: () => void;
   onToggleTelemetry: () => void;
@@ -101,6 +102,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
   onOpenScanner,
   onCloseScanner,
   onSelectCandidate,
+  onDismissDisambiguation,
   onCaptureDebug,
   onDismissDebugCaptures,
   onToggleTelemetry,
@@ -932,6 +934,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
           onClose={onCloseScanner}
           onRetry={onOpenScanner}
           onSelectCandidate={onSelectCandidate}
+          onDismissDisambiguation={onDismissDisambiguation}
           onCaptureDebug={onCaptureDebug}
           onDismissDebugCaptures={onDismissDebugCaptures}
           onToggleTelemetry={onToggleTelemetry}

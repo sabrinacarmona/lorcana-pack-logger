@@ -169,6 +169,7 @@ export interface UseScannerReturn {
   openScanner: () => void
   closeScanner: () => void
   selectCandidate: (card: Card) => void
+  dismissDisambiguation: () => void
   captureDebugFrame: () => void
   dismissDebugCaptures: () => void
   exportDiagnostics: () => void
@@ -256,6 +257,12 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const selectCandidate = useCallback((card: Card) => {
     acceptMatch(card, 'cn')
   }, [acceptMatch])
+
+  /** Dismiss the disambiguation sheet and resume scanning. */
+  const dismissDisambiguation = useCallback(() => {
+    setCandidates([])
+    setScannerState('streaming')
+  }, [])
 
   /**
    * Capture the current camera frame and extract labelled regions as data URLs.
@@ -716,6 +723,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     openScanner,
     closeScanner,
     selectCandidate,
+    dismissDisambiguation,
     captureDebugFrame,
     dismissDebugCaptures,
     exportDiagnostics,

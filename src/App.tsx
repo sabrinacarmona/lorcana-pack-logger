@@ -249,6 +249,7 @@ export function App() {
               onOpenScanner={scanner.openScanner}
               onCloseScanner={scanner.closeScanner}
               onSelectCandidate={scanner.selectCandidate}
+              onDismissDisambiguation={scanner.dismissDisambiguation}
               onCaptureDebug={scanner.captureDebugFrame}
               onDismissDebugCaptures={scanner.dismissDebugCaptures}
               onToggleTelemetry={toggleOverlay}
