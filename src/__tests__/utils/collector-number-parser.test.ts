@@ -157,4 +157,33 @@ describe('parseCollectorNumber', () => {
     const result = parseCollectorNumber('130/204 +EN 7 I')
     expect(result).toEqual({ cn: '130', total: '204', setNumber: '7', raw: '130/204' })
   })
+
+  // --- Letter→digit confusion for set number ---
+  it('recovers set number when OCR reads "1" as "I": "163/204 EN I"', () => {
+    // OCR reads set 1 as "I" — the I→1 substitution + isolation regex should recover it
+    const result = parseCollectorNumber('163/204 EN I')
+    expect(result).toEqual({ cn: '163', total: '204', setNumber: '1', raw: '163/204' })
+  })
+
+  it('recovers set number when OCR reads "1" as "l": "163/204 EN l"', () => {
+    const result = parseCollectorNumber('163/204 EN l')
+    expect(result).toEqual({ cn: '163', total: '204', setNumber: '1', raw: '163/204' })
+  })
+
+  it('recovers set number when OCR reads "1" as "|": "163/204 EN |"', () => {
+    const result = parseCollectorNumber('163/204 EN |')
+    expect(result).toEqual({ cn: '163', total: '204', setNumber: '1', raw: '163/204' })
+  })
+
+  it('does not false-positive set number from "EN" letters: "130/204 EN"', () => {
+    // "EN" should NOT produce set number "1" from the N→1 confusion
+    // (N is not in the substitution list, and E1 has E adjacent to the digit)
+    const result = parseCollectorNumber('130/204 EN')
+    expect(result).toEqual({ cn: '130', total: '204', setNumber: null, raw: '130/204' })
+  })
+
+  it('recovers set 11 when OCR reads as "Il": "42/216 EN Il"', () => {
+    const result = parseCollectorNumber('42/216 EN Il')
+    expect(result).toEqual({ cn: '42', total: '216', setNumber: '11', raw: '42/216' })
+  })
 })

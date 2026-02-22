@@ -50,14 +50,17 @@ export function parseCollectorNumber(ocrText: string): ParsedCollectorNumber | n
     // Validate: the total must be large enough to be a real Lorcana set, and
     // the collector number must not exceed the total (e.g. reject "204/102").
     if (cn && !isNaN(total) && total >= MIN_TOTAL && parseInt(cn, 10) <= total) {
-      // ── Extract set number from ORIGINAL text (before OCR substitutions) ──
-      // Using the original avoids false digits from I→1, O→0, etc.
-      // The footer format is: CN/TOTAL <sep> LANG <sep> SET
-      // We look for a 1-2 digit number in the 30 chars after the CN match.
+      // ── Extract set number from CLEANED text with letter-isolation ─────
+      // We use the *cleaned* text so that OCR confusions like I→1 are resolved
+      // (critical for set 1, where OCR often reads "1" as "I" or "l").
+      // To avoid false positives from "EN" → the N/E stay unchanged but we
+      // need to skip digits that are adjacent to letters (like "1" in "E1"
+      // if "I" was converted).  The isolation regex requires a non-letter
+      // (or string boundary) on both sides of the digit group.
       let setNumber: string | null = null
       const matchEnd = (slashMatch.index ?? 0) + slashMatch[0].length
-      const afterCn = ocrText.substring(matchEnd, matchEnd + 30)
-      const digitMatches = [...afterCn.matchAll(/(\d{1,2})/g)]
+      const afterCn = cleaned.substring(matchEnd, matchEnd + 30)
+      const digitMatches = [...afterCn.matchAll(/(?:^|[^A-Za-z])(\d{1,2})(?:[^A-Za-z]|$)/g)]
 
       if (digitMatches.length > 0 && digitMatches[0] && digitMatches[0][1]) {
         const sn = parseInt(digitMatches[0][1], 10)

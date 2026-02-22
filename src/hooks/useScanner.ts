@@ -51,12 +51,16 @@ const CN_REGION_WIDTH = 1.0
  * 2x upscale → ~1382×426 px — text is ~30px tall, readable by Tesseract. */
 const OCR_UPSCALE = 2
 
-// Ink colour region — sample from the card's name banner area.
-// The banner behind "PACHA / Trekmate" is a large solid area of the ink colour.
-// Left edge avoids the white text; brightness filtering handles any that leaks in.
+// Ink colour region — tall vertical strip along the card's left edge.
+// Character cards have the ink name banner at ~52%, but non-character cards
+// (Action, Song, Item) have it at ~38-45%.  A tall strip from 30–68% catches
+// the ink-coloured banner regardless of card type.  Width stays narrow to
+// avoid sampling text.  The ink detector's brightness + per-pixel classifier
+// already filters out text, glare, and dark borders.
 const INK_REGION_LEFT = 0.01
-const INK_REGION_TOP = 0.52
-const INK_REGION_SIZE = 0.10
+const INK_REGION_TOP = 0.30
+const INK_REGION_WIDTH = 0.10
+const INK_REGION_HEIGHT = 0.38
 
 // ── object-fit: cover transform ─────────────────────────────────────────
 // The video element uses `object-fit: cover`, which scales the video to fill
@@ -314,8 +318,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     const inkDotRegion = cropToDataUrl(
       gx + INK_REGION_LEFT * gw,
       gy + INK_REGION_TOP * gh,
-      INK_REGION_SIZE * gw,
-      INK_REGION_SIZE * gh,
+      INK_REGION_WIDTH * gw,
+      INK_REGION_HEIGHT * gh,
     )
 
     setDebugCaptures({
@@ -390,8 +394,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         inkRegionPx: {
           x: Math.floor(guideX + INK_REGION_LEFT * guideW),
           y: Math.floor(guideY + INK_REGION_TOP * guideH),
-          w: Math.floor(INK_REGION_SIZE * guideW),
-          h: Math.floor(INK_REGION_SIZE * guideH),
+          w: Math.floor(INK_REGION_WIDTH * guideW),
+          h: Math.floor(INK_REGION_HEIGHT * guideH),
         },
       }
 
@@ -470,8 +474,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
 
       const inkSx = Math.floor(guideX + INK_REGION_LEFT * guideW)
       const inkSy = Math.floor(guideY + INK_REGION_TOP * guideH)
-      const inkSw = Math.floor(INK_REGION_SIZE * guideW)
-      const inkSh = Math.floor(INK_REGION_SIZE * guideH)
+      const inkSw = Math.floor(INK_REGION_WIDTH * guideW)
+      const inkSh = Math.floor(INK_REGION_HEIGHT * guideH)
 
       inkCanvas.width = inkSw
       inkCanvas.height = inkSh
@@ -633,7 +637,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       constants: {
         GUIDE: { x: GUIDE_X, y: GUIDE_Y, w: GUIDE_W, h: GUIDE_H },
         CN_REGION: { left: CN_REGION_LEFT, top: CN_REGION_TOP, w: CN_REGION_WIDTH, h: CN_REGION_HEIGHT },
-        INK_REGION: { left: INK_REGION_LEFT, top: INK_REGION_TOP, size: INK_REGION_SIZE },
+        INK_REGION: { left: INK_REGION_LEFT, top: INK_REGION_TOP, w: INK_REGION_WIDTH, h: INK_REGION_HEIGHT },
         OCR_UPSCALE,
         MIN_CONFIDENCE,
         MIN_INK_CONFIDENCE,
