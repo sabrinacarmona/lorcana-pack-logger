@@ -216,6 +216,7 @@ export function App() {
               scannerActive={scanner.scannerActive}
               scannerState={scanner.scannerState}
               lastMatch={scanner.lastMatch}
+              matchMethod={scanner.matchMethod}
               candidates={scanner.candidates}
               scannerError={scanner.error}
               scanCount={scanner.scanCount}

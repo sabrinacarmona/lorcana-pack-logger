@@ -19,6 +19,7 @@ export function parseCards(sourceData: RawCard[] | null): Card[] {
       ink: c[6],
       rarity: c[7],
       type: c[8] ? c[8].split(',') : [],
+      imageUrl: String(c[9] || ''),
     })
   }
 

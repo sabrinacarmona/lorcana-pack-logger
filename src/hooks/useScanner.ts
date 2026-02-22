@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Card, ScannerState } from '../types'
-import { recognizeFromCanvas, terminateWorker } from '../utils/ocr-worker'
+import { recognizeFromCanvas, recognizeCollectorNumber, terminateWorker } from '../utils/ocr-worker'
 import { matchCardByName } from '../utils/card-name-matcher'
+import { parseCollectorNumber } from '../utils/collector-number-parser'
+import { matchCardByCollectorNumber } from '../utils/card-cn-matcher'
 
 /** How often to capture a frame and run OCR (ms). */
 const FRAME_INTERVAL = 500
@@ -21,10 +23,13 @@ interface UseScannerOptions {
   onCardMatched: (card: Card) => void
 }
 
+export type MatchMethod = 'cn' | 'name' | null
+
 export interface UseScannerReturn {
   scannerActive: boolean
   scannerState: ScannerState
   lastMatch: Card | null
+  matchMethod: MatchMethod
   candidates: Card[]
   error: string | null
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -37,6 +42,7 @@ export interface UseScannerReturn {
 export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOptions): UseScannerReturn {
   const [scannerState, setScannerState] = useState<ScannerState>('idle')
   const [lastMatch, setLastMatch] = useState<Card | null>(null)
+  const [matchMethod, setMatchMethod] = useState<MatchMethod>(null)
   const [candidates, setCandidates] = useState<Card[]>([])
   const [error, setError] = useState<string | null>(null)
   const [scanCount, setScanCount] = useState(0)
@@ -45,6 +51,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const bottomCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const cooldownRef = useRef<Map<string, number>>(new Map())
   const matchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const processingRef = useRef(false)
@@ -105,34 +112,78 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     if (scannerState === 'disambiguating') return
 
     const video = videoRef.current
+
+    // Ensure canvases exist
+    if (!bottomCanvasRef.current) {
+      bottomCanvasRef.current = document.createElement('canvas')
+    }
     if (!canvasRef.current) {
       canvasRef.current = document.createElement('canvas')
     }
-    const canvas = canvasRef.current
-
-    // Crop to center-upper band where the card name is printed.
-    // The name banner sits roughly at 15-35% from the top of the card,
-    // spanning most of the card width.
-    const cropTop = Math.floor(video.videoHeight * 0.15)
-    const cropHeight = Math.floor(video.videoHeight * 0.20)
-    const cropLeft = Math.floor(video.videoWidth * 0.10)
-    const cropWidth = Math.floor(video.videoWidth * 0.80)
-    canvas.width = cropWidth
-    canvas.height = cropHeight
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Contrast boost for text on the coloured ink banner
-    ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.2)'
-    ctx.drawImage(video, cropLeft, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
-    ctx.filter = 'none'
 
     processingRef.current = true
     try {
-      const { text, confidence } = await recognizeFromCanvas(canvas)
+      // ── PRIMARY: Collector number at the bottom of the card ──────────
+      const bottomCanvas = bottomCanvasRef.current
+      const bnCropTop = Math.floor(video.videoHeight * 0.82)
+      const bnCropHeight = Math.floor(video.videoHeight * 0.14)
+      const bnCropLeft = Math.floor(video.videoWidth * 0.15)
+      const bnCropWidth = Math.floor(video.videoWidth * 0.70)
+      bottomCanvas.width = bnCropWidth
+      bottomCanvas.height = bnCropHeight
 
-      // Reject low-confidence reads
+      const bnCtx = bottomCanvas.getContext('2d')
+      if (bnCtx) {
+        // Higher contrast for small printed text on dark card edge
+        bnCtx.filter = 'grayscale(1) contrast(3.0) brightness(1.5)'
+        bnCtx.drawImage(video, bnCropLeft, bnCropTop, bnCropWidth, bnCropHeight, 0, 0, bnCropWidth, bnCropHeight)
+        bnCtx.filter = 'none'
+
+        const cnResult = await recognizeCollectorNumber(bottomCanvas)
+        if (cnResult.confidence >= MIN_CONFIDENCE) {
+          const parsed = parseCollectorNumber(cnResult.text)
+          if (parsed) {
+            const cnMatch = matchCardByCollectorNumber(
+              parsed.cn,
+              cardsRef.current,
+              setFilterRef.current,
+            )
+            if (cnMatch.card) {
+              const key = `${cnMatch.card.setCode}-${cnMatch.card.cn}`
+              const now = Date.now()
+              const lastSeen = cooldownRef.current.get(key) ?? 0
+              if (now - lastSeen >= COOLDOWN_MS) {
+                setMatchMethod('cn')
+                acceptMatch(cnMatch.card)
+                return
+              }
+            } else if (cnMatch.candidates.length > 1) {
+              setMatchMethod('cn')
+              setCandidates(cnMatch.candidates)
+              setScannerState('disambiguating')
+              return
+            }
+          }
+        }
+      }
+
+      // ── FALLBACK: Card name in the upper banner ──────────────────────
+      const canvas = canvasRef.current
+      const cropTop = Math.floor(video.videoHeight * 0.15)
+      const cropHeight = Math.floor(video.videoHeight * 0.20)
+      const cropLeft = Math.floor(video.videoWidth * 0.10)
+      const cropWidth = Math.floor(video.videoWidth * 0.80)
+      canvas.width = cropWidth
+      canvas.height = cropHeight
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.2)'
+      ctx.drawImage(video, cropLeft, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
+      ctx.filter = 'none'
+
+      const { text, confidence } = await recognizeFromCanvas(canvas)
       if (confidence < MIN_CONFIDENCE) return
       if (text.length < 2) return
 
@@ -143,15 +194,15 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       )
 
       if (result.card) {
-        // Clear auto-match — check cooldown
         const key = `${result.card.setCode}-${result.card.cn}`
         const now = Date.now()
         const lastSeen = cooldownRef.current.get(key) ?? 0
         if (now - lastSeen < COOLDOWN_MS) return
 
+        setMatchMethod('name')
         acceptMatch(result.card)
       } else if (result.candidates.length > 1) {
-        // Ambiguous match — show disambiguation picker
+        setMatchMethod('name')
         setCandidates(result.candidates)
         setScannerState('disambiguating')
       }
@@ -165,6 +216,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
   const openScanner = useCallback(async () => {
     setError(null)
     setLastMatch(null)
+    setMatchMethod(null)
     setCandidates([])
     setScanCount(0)
     cooldownRef.current.clear()
@@ -216,6 +268,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     stopStream()
     setScannerState('idle')
     setLastMatch(null)
+    setMatchMethod(null)
     setCandidates([])
     setError(null)
     processingRef.current = false
@@ -233,6 +286,7 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     scannerActive: scannerState !== 'idle',
     scannerState,
     lastMatch,
+    matchMethod,
     candidates,
     error,
     videoRef,

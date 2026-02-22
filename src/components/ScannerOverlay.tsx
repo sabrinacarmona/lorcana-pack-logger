@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import type { Card, ScannerState } from '../types'
+import type { MatchMethod } from '../hooks/useScanner'
 import { RarityBadge } from './RarityBadge'
 import { InkDot } from './InkDot'
 
 interface ScannerOverlayProps {
   scannerState: ScannerState
   lastMatch: Card | null
+  matchMethod: MatchMethod
   candidates: Card[]
   error: string | null
   scanCount: number
@@ -18,6 +20,7 @@ interface ScannerOverlayProps {
 export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   scannerState,
   lastMatch,
+  matchMethod,
   candidates,
   error,
   scanCount,
@@ -142,7 +145,48 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           </button>
         </div>
 
-        {/* Guide frame — targets center-upper area where the card name is printed */}
+        {/* Bottom guide frame — collector number target zone */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '15%',
+            right: '15%',
+            top: '82%',
+            height: '14%',
+          }}
+        >
+          <div style={{ width: '100%', height: '100%', position: 'relative', opacity: 0.5 }}>
+            {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map((corner) => {
+              const isTop = corner.includes('top')
+              const isLeft = corner.includes('Left')
+              return (
+                <div
+                  key={`bn-${corner}`}
+                  style={{
+                    position: 'absolute',
+                    [isTop ? 'top' : 'bottom']: -1,
+                    [isLeft ? 'left' : 'right']: -1,
+                    width: 16,
+                    height: 16,
+                    borderColor: guideColor,
+                    borderStyle: 'solid',
+                    borderWidth: 0,
+                    borderTopWidth: isTop ? 2 : 0,
+                    borderBottomWidth: isTop ? 0 : 2,
+                    borderLeftWidth: isLeft ? 2 : 0,
+                    borderRightWidth: isLeft ? 0 : 2,
+                    borderRadius: isTop
+                      ? isLeft ? '4px 0 0 0' : '0 4px 0 0'
+                      : isLeft ? '0 0 0 4px' : '0 0 4px 0',
+                    transition: 'border-color 200ms ease',
+                  }}
+                />
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Upper guide frame — card name fallback zone */}
         <div
           style={{
             position: 'absolute',
@@ -238,10 +282,24 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 4,
+                  gap: 8,
                   animation: 'scannerCardBanner 300ms ease-out',
                 }}
               >
+                {lastMatch.imageUrl && (
+                  <img
+                    src={lastMatch.imageUrl}
+                    alt={lastMatch.display}
+                    style={{
+                      width: 60,
+                      height: 84,
+                      borderRadius: 6,
+                      objectFit: 'cover',
+                      border: '2px solid rgba(52,199,89,0.6)',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+                    }}
+                  />
+                )}
                 <div
                   style={{
                     display: 'flex',
@@ -283,7 +341,9 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     fontFamily: "'Outfit', sans-serif",
                   }}
                 >
-                  Added to session
+                  {matchMethod === 'cn'
+                    ? `Matched by #${lastMatch.cn}`
+                    : 'Matched by name'}
                 </span>
               </div>
             )}
@@ -402,7 +462,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                 animation: 'fadeIn 300ms ease-out',
               }}
             >
-              Center the card name in the frame
+              Position the full card in view
             </div>
           )}
         </div>

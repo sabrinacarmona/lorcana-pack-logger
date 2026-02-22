@@ -8,7 +8,7 @@ const CACHE_DURATION_MS = 86400000 // 24 hours
  * Increment this when the RawCard tuple structure changes.
  * Stale caches with a different version are silently invalidated.
  */
-const CACHE_VERSION = 1
+const CACHE_VERSION = 2
 
 interface CardCache {
   version: number

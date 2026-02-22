@@ -41,6 +41,13 @@ interface ApiCard {
   rarity?: string
   type?: string | string[]
   classifications?: string | string[]
+  image_uris?: {
+    digital?: {
+      small?: string
+      normal?: string
+      large?: string
+    }
+  }
 }
 
 function mapApiCards(cards: ApiCard[]): RawCard[] {
@@ -59,6 +66,7 @@ function mapApiCards(cards: ApiCard[]): RawCard[] {
       c.ink || '',
       c.rarity || '',
       combined,
+      c.image_uris?.digital?.small || '',
     ]
   })
 }

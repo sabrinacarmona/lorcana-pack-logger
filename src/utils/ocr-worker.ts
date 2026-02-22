@@ -43,6 +43,31 @@ export async function recognizeFromCanvas(canvas: HTMLCanvasElement): Promise<Oc
 }
 
 /**
+ * Run OCR optimised for the collector number region (digits + slash).
+ *
+ * Switches the worker to SINGLE_LINE page segmentation and restricts the
+ * character whitelist to numeric chars.  This dramatically improves accuracy
+ * for the small "128/204" text at the bottom of Lorcana cards.
+ */
+export async function recognizeCollectorNumber(canvas: HTMLCanvasElement): Promise<OcrResult> {
+  const worker = await getWorker()
+  try {
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+      tessedit_char_whitelist: '0123456789/\\| ',
+    })
+    const { data } = await worker.recognize(canvas)
+    return { text: data.text.trim(), confidence: data.confidence }
+  } finally {
+    // Restore defaults so the next recognizeFromCanvas call works correctly
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist: '',
+    })
+  }
+}
+
+/**
  * Terminate the shared worker and release resources.
  * Call this when the app unmounts or the scanner is no longer needed.
  */

@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { Card, Pull, ScannerState } from '../types';
+import type { MatchMethod } from '../hooks/useScanner';
 import { PACK_SIZE } from '../constants';
 import { inkGradientStyle } from '../utils/colour';
 import { rarityRowStyle, rarityNameColour } from '../utils/rarity-styles';
@@ -39,6 +40,7 @@ interface SearchViewProps {
   scannerActive: boolean;
   scannerState: ScannerState;
   lastMatch: Card | null;
+  matchMethod: MatchMethod;
   candidates: Card[];
   scannerError: string | null;
   scanCount: number;
@@ -78,6 +80,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
   scannerActive,
   scannerState,
   lastMatch,
+  matchMethod,
   candidates,
   scannerError,
   scanCount,
@@ -901,6 +904,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
         <ScannerOverlay
           scannerState={scannerState}
           lastMatch={lastMatch}
+          matchMethod={matchMethod}
           candidates={candidates}
           error={scannerError}
           scanCount={scanCount}
