@@ -1,4 +1,9 @@
 import Tesseract from 'tesseract.js'
+import {
+  setMutexLocked,
+  incrementQueue,
+  decrementQueue,
+} from './telemetry'
 
 let workerInstance: Tesseract.Worker | null = null
 let initPromise: Promise<Tesseract.Worker> | null = null
@@ -7,11 +12,22 @@ let initPromise: Promise<Tesseract.Worker> | null = null
  * Simple mutex to serialise worker calls.  Tesseract.js workers are NOT
  * safe for concurrent operations — interleaved setParameters + recognize
  * calls corrupt each other.  This ensures only one call runs at a time.
+ *
+ * Telemetry hooks track mutex state and queue depth for the debug overlay.
  */
 let workerLock: Promise<void> = Promise.resolve()
 
 function withLock<T>(fn: () => Promise<T>): Promise<T> {
-  const next = workerLock.then(fn, fn) // run fn regardless of prior result
+  incrementQueue()
+  const next = workerLock.then(() => {
+    decrementQueue()
+    setMutexLocked(true)
+    return fn().finally(() => setMutexLocked(false))
+  }, () => {
+    decrementQueue()
+    setMutexLocked(true)
+    return fn().finally(() => setMutexLocked(false))
+  })
   workerLock = next.then(() => {}, () => {}) // swallow to keep chain alive
   return next
 }

@@ -55,6 +55,7 @@ interface SearchViewProps {
   onSelectCandidate: (card: Card) => void;
   onCaptureDebug: () => void;
   onDismissDebugCaptures: () => void;
+  onToggleTelemetry: () => void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -101,6 +102,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
   onSelectCandidate,
   onCaptureDebug,
   onDismissDebugCaptures,
+  onToggleTelemetry,
 }) => {
   // Group pulls by set
   const groupedPulls = useMemo(() => {
@@ -930,6 +932,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
           onSelectCandidate={onSelectCandidate}
           onCaptureDebug={onCaptureDebug}
           onDismissDebugCaptures={onDismissDebugCaptures}
+          onToggleTelemetry={onToggleTelemetry}
         />
       )}
     </div>

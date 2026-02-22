@@ -21,6 +21,7 @@ interface ScannerOverlayProps {
   onSelectCandidate: (card: Card) => void
   onCaptureDebug: () => void
   onDismissDebugCaptures: () => void
+  onToggleTelemetry: () => void
 }
 
 export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
@@ -40,6 +41,7 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
   onSelectCandidate,
   onCaptureDebug,
   onDismissDebugCaptures,
+  onToggleTelemetry,
 }) => {
   const [showHint, setShowHint] = useState(false)
 
@@ -142,27 +144,50 @@ export const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Debug capture button — freezes frame and shows what the algorithm sees */}
             {(scannerState === 'streaming' || scannerState === 'processing' || scannerState === 'disambiguating') && (
-              <button
-                onClick={onCaptureDebug}
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  background: 'rgba(59,130,246,0.3)',
-                  border: '1px solid rgba(59,130,246,0.5)',
-                  borderRadius: 'var(--radius-full)',
-                  color: '#7cb3ff',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: "'Outfit', sans-serif",
-                }}
-              >
-                Debug
-              </button>
+              <>
+                <button
+                  onClick={onToggleTelemetry}
+                  style={{
+                    height: 36,
+                    padding: '0 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    background: 'rgba(175,82,222,0.25)',
+                    border: '1px solid rgba(175,82,222,0.45)',
+                    borderRadius: 'var(--radius-full)',
+                    color: '#c084fc',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  Telem
+                </button>
+                <button
+                  onClick={onCaptureDebug}
+                  style={{
+                    height: 36,
+                    padding: '0 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    background: 'rgba(59,130,246,0.3)',
+                    border: '1px solid rgba(59,130,246,0.5)',
+                    borderRadius: 'var(--radius-full)',
+                    color: '#7cb3ff',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  Debug
+                </button>
+              </>
             )}
             <button
               onClick={onClose}

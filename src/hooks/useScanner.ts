@@ -4,6 +4,7 @@ import { recognizeCollectorNumber, terminateWorker } from '../utils/ocr-worker'
 import { parseCollectorNumber } from '../utils/collector-number-parser'
 import { matchCardByCollectorNumber } from '../utils/card-cn-matcher'
 import { detectInkColor } from '../utils/ink-detector'
+import { recordFrame, resetTelemetry } from '../utils/telemetry'
 
 /** How often to capture a frame and run the matching pipeline (ms). */
 const FRAME_INTERVAL = 400
@@ -275,11 +276,14 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
       cnCtx.filter = 'none'
 
       // ── 2. Run OCR ──────────────────────────────────────────────
+      const ocrStart = performance.now()
       const ocrResult = await recognizeCollectorNumber(cnCanvas)
+      const ocrLatency = performance.now() - ocrStart
       setLastOcrText(ocrResult.text || '')
 
       // ── 3. Parse collector number ───────────────────────────────
       if (ocrResult.confidence < MIN_CONFIDENCE || !ocrResult.text) {
+        const matchResult = ocrResult.confidence < MIN_CONFIDENCE ? 'low confidence' : 'no text'
         setDebugInfo({
           videoRes: `${vw}x${vh}`,
           lastOcrText: ocrResult.text || '',
@@ -287,7 +291,16 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
           detectedInk: '-',
           inkConfidence: 0,
           parsedCn: '-',
-          matchResult: ocrResult.confidence < MIN_CONFIDENCE ? 'low confidence' : 'no text',
+          matchResult,
+        })
+        recordFrame({
+          ocrConfidence: ocrResult.confidence,
+          ocrText: ocrResult.text || '',
+          workerLatencyMs: Math.round(ocrLatency),
+          mutexContended: ocrLatency > FRAME_INTERVAL,
+          parsedCn: null,
+          detectedInk: null,
+          matchResult,
         })
         return
       }
@@ -301,6 +314,15 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
           detectedInk: '-',
           inkConfidence: 0,
           parsedCn: 'no match',
+          matchResult: 'parse failed',
+        })
+        recordFrame({
+          ocrConfidence: ocrResult.confidence,
+          ocrText: ocrResult.text,
+          workerLatencyMs: Math.round(ocrLatency),
+          mutexContended: ocrLatency > FRAME_INTERVAL,
+          parsedCn: null,
+          detectedInk: null,
           matchResult: 'parse failed',
         })
         return
@@ -343,6 +365,12 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
 
       const method: MatchMethod = useInk ? 'cn+ink' : 'cn'
 
+      const matchResultStr = result.card
+        ? `${result.card.display} (${method})`
+        : result.candidates.length > 0
+          ? `${result.candidates.length} candidates`
+          : 'no match'
+
       setDebugInfo({
         videoRes: `${vw}x${vh}`,
         lastOcrText: ocrResult.text,
@@ -350,11 +378,17 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
         detectedInk: inkResult.ink || '-',
         inkConfidence: inkResult.confidence,
         parsedCn: `${parsed.cn}/${parsed.total || '?'}`,
-        matchResult: result.card
-          ? `${result.card.display} (${method})`
-          : result.candidates.length > 0
-            ? `${result.candidates.length} candidates`
-            : 'no match',
+        matchResult: matchResultStr,
+      })
+
+      recordFrame({
+        ocrConfidence: ocrResult.confidence,
+        ocrText: ocrResult.text,
+        workerLatencyMs: Math.round(ocrLatency),
+        mutexContended: ocrLatency > FRAME_INTERVAL,
+        parsedCn: `${parsed.cn}/${parsed.total || '?'}`,
+        detectedInk: useInk,
+        matchResult: matchResultStr,
       })
 
       if (result.card) {
@@ -449,6 +483,8 @@ export function useScanner({ cards, setFilter, onCardMatched }: UseScannerOption
     inkCanvasRef.current = null
     // Terminate OCR worker to reclaim ~4 MB (re-created lazily on next open)
     terminateWorker().catch(() => {})
+    // Clear the telemetry ring buffer for the next session
+    resetTelemetry()
   }, [stopStream])
 
   // Cleanup on unmount

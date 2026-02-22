@@ -12,12 +12,14 @@ import { useExportHistory } from './hooks/useExportHistory'
 import { useRelativeTime } from './hooks/useRelativeTime'
 import { useSets } from './hooks/useSets'
 import { useScanner } from './hooks/useScanner'
+import { useTelemetry } from './hooks/useTelemetry'
 import { Header } from './components/Header'
 import { SearchView } from './components/SearchView'
 import { ExportView } from './components/ExportView'
 import { HistoryView } from './components/HistoryView'
 import { MobileBottomBar } from './components/MobileBottomBar'
 import { UndoToast } from './components/UndoToast'
+import { DebugOverlay } from './components/DebugOverlay'
 import { ErrorBoundary } from './errors/ErrorBoundary'
 
 export function App() {
@@ -67,6 +69,14 @@ export function App() {
       sensory.triggerFeedback(card.rarity)
     }, [session, pulls, undo, sensory]),
   })
+
+  // === Telemetry ===
+  const {
+    telemetry,
+    overlayVisible,
+    toggleOverlay,
+    exportDiagnostics: exportTelemetry,
+  } = useTelemetry()
 
   // === Core actions ===
   const handleAddCard = useCallback(
@@ -233,6 +243,7 @@ export function App() {
               onSelectCandidate={scanner.selectCandidate}
               onCaptureDebug={scanner.captureDebugFrame}
               onDismissDebugCaptures={scanner.dismissDebugCaptures}
+              onToggleTelemetry={toggleOverlay}
             />
             </ErrorBoundary>
           )}
@@ -273,6 +284,14 @@ export function App() {
           isFading={undo.undoFading}
         />
       )}
+
+      {/* Debug telemetry overlay */}
+      <DebugOverlay
+        telemetry={telemetry}
+        visible={overlayVisible}
+        onClose={toggleOverlay}
+        onExport={exportTelemetry}
+      />
 
       {/* Mobile bottom bar */}
       <MobileBottomBar
