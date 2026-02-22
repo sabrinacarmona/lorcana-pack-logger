@@ -150,11 +150,19 @@ export function App() {
 
   const handleExportDownload = useCallback(() => {
     exportHistory.handleDownload(pulls.pulls, session.sessionName)
-  }, [exportHistory, pulls.pulls, session.sessionName])
+    // Clear session pulls after successful download so the next session starts clean
+    session.clearSession()
+    pulls.clearPulls()
+    ui.setView('search')
+  }, [exportHistory, pulls.pulls, session, pulls, ui])
 
   const handleExportCopy = useCallback(() => {
     exportHistory.handleCopy(pulls.pulls, session.sessionName)
-  }, [exportHistory, pulls.pulls, session.sessionName])
+    // Clear session pulls after successful copy so the next session starts clean
+    session.clearSession()
+    pulls.clearPulls()
+    ui.setView('search')
+  }, [exportHistory, pulls.pulls, session, pulls, ui])
 
   // === View rendering ===
   const viewAnimation =
